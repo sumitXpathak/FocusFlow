@@ -1,11 +1,14 @@
 import React, { useState } from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity,
-  StyleSheet, SafeAreaView, Switch,
+  StyleSheet, SafeAreaView, Switch, Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS, SIZES, SHADOWS } from '../constants/theme';
 import { useApp } from '../context/AppContext';
+import { useAuth } from '../context/AuthContext';
+import { resetAllUserData } from '../services/firestoreService';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 function SettingRow({ icon, label, value, onPress, isToggle, toggleVal, onToggle, color }) {
   return (
@@ -31,11 +34,71 @@ function SettingRow({ icon, label, value, onPress, isToggle, toggleVal, onToggle
   );
 }
 
+function getInitials(name) {
+  if (!name) return '??';
+  const parts = name.trim().split(/\s+/);
+  if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase();
+  return parts[0].substring(0, 2).toUpperCase();
+}
+
 export default function SettingsScreen({ navigation }) {
-  const { blockingEnabled, dispatch, level, points } = useApp();
+  const { blockingEnabled, dispatch, level, points, dailyGoalHours } = useApp();
+  const { userProfile, isAuthenticated, user, logout } = useAuth();
   const [notifications, setNotifications] = useState(true);
   const [bedtimeMode, setBedtimeMode] = useState(false);
   const [strictBlocking, setStrictBlocking] = useState(true);
+
+  const displayName = userProfile?.displayName || 'User';
+  const email = userProfile?.email || user?.email || '';
+  const initials = getInitials(displayName);
+
+  async function handleLogout() {
+    Alert.alert(
+      'Sign out',
+      'Are you sure you want to sign out?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Sign out',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await logout();
+              navigation?.reset({ index: 0, routes: [{ name: 'Login' }] });
+            } catch (e) {
+              Alert.alert('Error', e.message);
+            }
+          },
+        },
+      ]
+    );
+  }
+
+  async function handleReset() {
+    Alert.alert(
+      'Reset all data',
+      'This will permanently delete all your progress, sessions, and stats. This cannot be undone.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Reset everything',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              if (isAuthenticated && user) {
+                await resetAllUserData(user.uid);
+              }
+              await AsyncStorage.removeItem('focusflow_state');
+              dispatch({ type: 'RESET' });
+              Alert.alert('Done', 'All data has been reset.');
+            } catch (e) {
+              Alert.alert('Error', e.message);
+            }
+          },
+        },
+      ]
+    );
+  }
 
   return (
     <SafeAreaView style={styles.safe}>
@@ -51,11 +114,12 @@ export default function SettingsScreen({ navigation }) {
         {/* Profile Card */}
         <View style={[styles.profileCard, styles.card]}>
           <View style={styles.avatar}>
-            <Text style={styles.avatarTxt}>AK</Text>
+            <Text style={styles.avatarTxt}>{initials}</Text>
           </View>
           <View style={{ flex: 1 }}>
-            <Text style={styles.profileName}>Alex Kumar</Text>
+            <Text style={styles.profileName}>{displayName}</Text>
             <Text style={styles.profileSub}>Level {level} · {points.toLocaleString()} pts</Text>
+            {email ? <Text style={styles.profileEmail}>{email}</Text> : null}
           </View>
           <TouchableOpacity style={styles.editBtn}>
             <Text style={styles.editTxt}>Edit</Text>
@@ -65,7 +129,7 @@ export default function SettingsScreen({ navigation }) {
         {/* Goals */}
         <Text style={styles.groupLabel}>GOALS</Text>
         <View style={[styles.group, styles.card]}>
-          <SettingRow icon="time-outline"        label="Daily screen time goal"   value="3 hrs"  />
+          <SettingRow icon="time-outline"        label="Daily screen time goal"   value={`${dailyGoalHours} hrs`}  />
           <View style={styles.divider} />
           <SettingRow icon="play-circle-outline" label="Focus session length"     value="25 min" />
           <View style={styles.divider} />
@@ -122,8 +186,16 @@ export default function SettingsScreen({ navigation }) {
           <Text style={styles.aiSub}>Based on your usage patterns this week</Text>
         </TouchableOpacity>
 
+        {/* Logout */}
+        {isAuthenticated && (
+          <TouchableOpacity style={styles.logoutBtn} onPress={handleLogout}>
+            <Ionicons name="log-out-outline" size={18} color={COLORS.orange} />
+            <Text style={styles.logoutTxt}>Sign out</Text>
+          </TouchableOpacity>
+        )}
+
         {/* Reset */}
-        <TouchableOpacity style={styles.resetBtn}>
+        <TouchableOpacity style={styles.resetBtn} onPress={handleReset}>
           <Text style={styles.resetTxt}>Reset all data</Text>
         </TouchableOpacity>
 
@@ -151,6 +223,7 @@ const styles = StyleSheet.create({
   avatarTxt: { fontSize: 16, fontWeight: '700', color: COLORS.white },
   profileName: { fontSize: 15, fontWeight: '700', color: COLORS.black },
   profileSub: { fontSize: 12, color: COLORS.gray, marginTop: 2 },
+  profileEmail: { fontSize: 11, color: COLORS.gray, marginTop: 1 },
   editBtn: {
     backgroundColor: COLORS.grayLight, borderRadius: 10,
     paddingHorizontal: 14, paddingVertical: 6,
@@ -180,6 +253,12 @@ const styles = StyleSheet.create({
   },
   aiTitle: { fontSize: 13, fontWeight: '700', color: COLORS.white, marginBottom: 3 },
   aiSub: { fontSize: 11, color: 'rgba(255,255,255,0.75)' },
+  logoutBtn: {
+    marginHorizontal: SIZES.padding, borderRadius: SIZES.radius,
+    padding: 14, alignItems: 'center', backgroundColor: COLORS.orangeLight,
+    marginBottom: 8, flexDirection: 'row', justifyContent: 'center', gap: 8,
+  },
+  logoutTxt: { fontSize: 13, fontWeight: '700', color: COLORS.orange },
   resetBtn: {
     marginHorizontal: SIZES.padding, borderRadius: SIZES.radius,
     padding: 14, alignItems: 'center', backgroundColor: '#FEE2E2', marginBottom: 12,

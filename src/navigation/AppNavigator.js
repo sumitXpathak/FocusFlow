@@ -4,6 +4,7 @@ import { createStackNavigator }     from '@react-navigation/stack';
 import { NavigationContainer }      from '@react-navigation/native';
 import { Ionicons }                 from '@expo/vector-icons';
 import { COLORS }                   from '../constants/theme';
+import { useAuth }                  from '../context/AuthContext';
 
 import HomeScreen          from '../screens/HomeScreen';
 import FocusScreen         from '../screens/FocusScreen';
@@ -16,6 +17,7 @@ import RegisterScreen      from '../screens/RegisterScreen';
 import NotificationsScreen from '../screens/NotificationsScreen';
 import AppLimitScreen             from '../screens/AppLimitScreen';
 import BlockingSchedulesScreen    from '../screens/BlockingSchedulesScreen';
+import LoadingScreen              from '../screens/LoadingScreen';
 
 const Tab   = createBottomTabNavigator();
 const Stack = createStackNavigator();
@@ -60,7 +62,19 @@ function MainTabs() {
 }
 
 export default function AppNavigator() {
-  const initialRoute = 'Onboarding';
+  const { isAuthenticated, loading, hasCompletedOnboarding } = useAuth();
+
+  if (loading) return <LoadingScreen />;
+
+  // Smart initial route:
+  // - Already logged in → Main
+  // - Seen onboarding but not logged in → Login
+  // - First time ever → Onboarding
+  const initialRoute = isAuthenticated
+    ? 'Main'
+    : hasCompletedOnboarding
+      ? 'Login'
+      : 'Onboarding';
 
   return (
     <NavigationContainer>

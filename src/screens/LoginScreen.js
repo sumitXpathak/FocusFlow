@@ -5,9 +5,10 @@ import {
   Platform, ActivityIndicator, Alert,
 } from 'react-native';
 import { COLORS, SIZES, SHADOWS } from '../constants/theme';
-import { loginUser } from '../services/authService';
+import { useAuth } from '../context/AuthContext';
 
 export default function LoginScreen({ navigation }) {
+  const { login, markOnboardingComplete } = useAuth();
   const [email,    setEmail]    = useState('');
   const [password, setPassword] = useState('');
   const [loading,  setLoading]  = useState(false);
@@ -20,13 +21,19 @@ export default function LoginScreen({ navigation }) {
     }
     setLoading(true);
     try {
-      await loginUser(email, password);
-      navigation.replace('Main');
+      await login(email, password);
+      markOnboardingComplete();
+      // Navigation is handled by AuthContext — the navigator will auto-redirect to Main
     } catch (e) {
       Alert.alert('Login failed', e.message);
     } finally {
       setLoading(false);
     }
+  }
+
+  function handleSkip() {
+    markOnboardingComplete();
+    navigation.replace('Main');
   }
 
   return (
@@ -100,7 +107,7 @@ export default function LoginScreen({ navigation }) {
         </View>
 
         {/* Skip for demo */}
-        <TouchableOpacity onPress={() => navigation?.navigate('Main')} style={styles.skipBtn}>
+        <TouchableOpacity onPress={handleSkip} style={styles.skipBtn}>
           <Text style={styles.skipTxt}>Continue without account →</Text>
         </TouchableOpacity>
       </KeyboardAvoidingView>

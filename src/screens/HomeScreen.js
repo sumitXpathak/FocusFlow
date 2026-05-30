@@ -6,9 +6,24 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS, SIZES, SHADOWS } from '../constants/theme';
 import { useApp } from '../context/AppContext';
+import { useAuth } from '../context/AuthContext';
 import ScreenTimeRing from '../components/ScreenTimeRing';
 import StreakBanner from '../components/StreakBanner';
 import AppUsageCard from '../components/AppUsageCard';
+
+function getGreeting() {
+  const h = new Date().getHours();
+  if (h < 12) return 'Good morning';
+  if (h < 17) return 'Good afternoon';
+  return 'Good evening';
+}
+
+function getInitials(name) {
+  if (!name) return '??';
+  const parts = name.trim().split(/\s+/);
+  if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase();
+  return parts[0].substring(0, 2).toUpperCase();
+}
 
 export default function HomeScreen() {
   const {
@@ -16,6 +31,10 @@ export default function HomeScreen() {
     dailyGoalHours, focusSessionsToday, pointsToday,
     streak, apps, blockingEnabled, dispatch,
   } = useApp();
+  const { userProfile, isAuthenticated } = useAuth();
+
+  const displayName = userProfile?.displayName || 'User';
+  const initials = getInitials(displayName);
 
   const hrs = Math.floor(screenTimeToday / 60);
   const mins = screenTimeToday % 60;
@@ -32,15 +51,15 @@ export default function HomeScreen() {
         {/* Header */}
         <View style={styles.header}>
           <View>
-            <Text style={styles.greeting}>Good morning</Text>
-            <Text style={styles.name}>Alex's Dashboard</Text>
+            <Text style={styles.greeting}>{getGreeting()}</Text>
+            <Text style={styles.name}>{displayName}'s Dashboard</Text>
           </View>
           <View style={styles.headerRight}>
             <TouchableOpacity style={styles.notifBtn}>
               <Ionicons name="notifications-outline" size={20} color={COLORS.black} />
             </TouchableOpacity>
             <View style={styles.avatar}>
-              <Text style={styles.avatarText}>AK</Text>
+              <Text style={styles.avatarText}>{initials}</Text>
             </View>
           </View>
         </View>

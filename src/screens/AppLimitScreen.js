@@ -7,17 +7,30 @@ import Slider from '@react-native-community/slider';
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS, SIZES, SHADOWS } from '../constants/theme';
 import { useApp } from '../context/AppContext';
+import { useAuth } from '../context/AuthContext';
+import { saveAppLimits } from '../services/firestoreService';
 
 export default function AppLimitScreen({ navigation }) {
   const { apps, dispatch } = useApp();
+  const { user, isAuthenticated } = useAuth();
   const [limits, setLimits] = useState(
     Object.fromEntries(apps.map(a => [a.id, a.limit]))
   );
 
   function handleSave() {
+    const updatedApps = apps.map(app => ({
+      ...app,
+      limit: limits[app.id],
+    }));
+    // Dispatch to local context
     apps.forEach(app => {
       dispatch({ type: 'SET_APP_LIMIT', payload: { id: app.id, limit: limits[app.id] } });
     });
+    // Persist to Firestore
+    if (isAuthenticated && user) {
+      saveAppLimits(user.uid, updatedApps)
+        .catch(e => console.log('Save limits error:', e.message));
+    }
     Alert.alert('Saved!', 'App limits have been updated.');
     navigation?.goBack();
   }

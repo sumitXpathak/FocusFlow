@@ -1,11 +1,14 @@
 import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
 import { SESSION_TYPES, DEFAULT_BREAK_MINUTES } from '../constants/data';
 import { useApp } from './AppContext';
+import { useAuth } from './AuthContext';
+import { saveFocusSession } from '../services/firestoreService';
 
 const TimerContext = createContext();
 
 export function TimerProvider({ children }) {
   const { dispatch } = useApp();
+  const { user, isAuthenticated } = useAuth();
   const [sessionType, setSessionType] = useState(SESSION_TYPES[0]);
   const [secondsLeft, setSecondsLeft] = useState(SESSION_TYPES[0].duration * 60);
   const [isRunning, setIsRunning] = useState(false);
@@ -40,6 +43,15 @@ export function TimerProvider({ children }) {
     if (!isBreak) {
       dispatch({ type: 'COMPLETE_SESSION', payload: sessionType.points });
       setSessionsCompleted(prev => prev + 1);
+      // Persist to Firestore
+      if (isAuthenticated && user) {
+        saveFocusSession(user.uid, {
+          type: sessionType.id,
+          label: sessionType.label,
+          duration: sessionType.duration,
+          points: sessionType.points,
+        }).catch(e => console.log('Session save error:', e.message));
+      }
       setIsBreak(true);
       setSecondsLeft(DEFAULT_BREAK_MINUTES * 60);
     } else {

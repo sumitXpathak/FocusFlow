@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity,
   StyleSheet, SafeAreaView, Modal, TextInput,
@@ -6,6 +6,11 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS, SIZES, SHADOWS } from '../constants/theme';
 import { useApp } from '../context/AppContext';
+import { useAuth } from '../context/AuthContext';
+import {
+  saveBlockingSchedules,
+  getBlockingSchedules,
+} from '../services/firestoreService';
 
 const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 const DAY_FULL = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
@@ -53,6 +58,7 @@ const HOURS = Array.from({ length: 24 }, (_, i) =>
 const PRESET_APPS = ['Facebook', 'Instagram', 'YouTube', 'TikTok', 'Twitter/X', 'Reddit', 'Snapchat', 'WhatsApp'];
 
 export default function BlockingSchedulesScreen({ navigation }) {
+  const { user, isAuthenticated } = useAuth();
   const [schedules, setSchedules] = useState(DEFAULT_SCHEDULES);
   const [showModal, setShowModal] = useState(false);
   const [editingSchedule, setEditingSchedule] = useState(null);
@@ -64,14 +70,39 @@ export default function BlockingSchedulesScreen({ navigation }) {
   const [newApps, setNewApps]         = useState([]);
   const [showTimePicker, setShowTimePicker] = useState(null); // 'start' | 'end'
 
+  // Load schedules from Firestore on mount
+  useEffect(() => {
+    if (isAuthenticated && user) {
+      getBlockingSchedules(user.uid)
+        .then(saved => {
+          if (saved && saved.length > 0) setSchedules(saved);
+        })
+        .catch(e => console.log('Load schedules error:', e.message));
+    }
+  }, [isAuthenticated, user]);
+
+  // Sync schedules to Firestore
+  function syncSchedules(updatedSchedules) {
+    if (isAuthenticated && user) {
+      saveBlockingSchedules(user.uid, updatedSchedules)
+        .catch(e => console.log('Save schedules error:', e.message));
+    }
+  }
+
   function toggleSchedule(id) {
-    setSchedules(prev =>
-      prev.map(s => s.id === id ? { ...s, active: !s.active } : s)
-    );
+    setSchedules(prev => {
+      const updated = prev.map(s => s.id === id ? { ...s, active: !s.active } : s);
+      syncSchedules(updated);
+      return updated;
+    });
   }
 
   function deleteSchedule(id) {
-    setSchedules(prev => prev.filter(s => s.id !== id));
+    setSchedules(prev => {
+      const updated = prev.filter(s => s.id !== id);
+      syncSchedules(updated);
+      return updated;
+    });
   }
 
   function openNewModal() {
@@ -111,12 +142,11 @@ export default function BlockingSchedulesScreen({ navigation }) {
   function saveSchedule() {
     if (!newName.trim() || newDays.length === 0 || newApps.length === 0) return;
     const colors = [COLORS.orange, '#22C55E', '#8B5CF6', '#EF4444', '#06B6D4'];
+    let updatedSchedules;
     if (editingSchedule) {
-      setSchedules(prev =>
-        prev.map(s => s.id === editingSchedule
-          ? { ...s, name: newName, emoji: newEmoji, days: newDays, startTime: newStart, endTime: newEnd, apps: newApps }
-          : s
-        )
+      updatedSchedules = schedules.map(s => s.id === editingSchedule
+        ? { ...s, name: newName, emoji: newEmoji, days: newDays, startTime: newStart, endTime: newEnd, apps: newApps }
+        : s
       );
     } else {
       const newSchedule = {
@@ -130,8 +160,10 @@ export default function BlockingSchedulesScreen({ navigation }) {
         active: true,
         color: colors[schedules.length % colors.length],
       };
-      setSchedules(prev => [...prev, newSchedule]);
+      updatedSchedules = [...schedules, newSchedule];
     }
+    setSchedules(updatedSchedules);
+    syncSchedules(updatedSchedules);
     setShowModal(false);
   }
 

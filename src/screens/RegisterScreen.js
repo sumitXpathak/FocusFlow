@@ -5,14 +5,18 @@ import {
   Platform, ActivityIndicator, Alert, ScrollView,
 } from 'react-native';
 import { COLORS, SIZES, SHADOWS } from '../constants/theme';
-import { registerUser } from '../services/authService';
+import { useAuth } from '../context/AuthContext';
+
+const GOAL_OPTIONS = [1, 2, 3, 4, 5];
 
 export default function RegisterScreen({ navigation }) {
+  const { register, markOnboardingComplete } = useAuth();
   const [name,     setName]     = useState('');
   const [email,    setEmail]    = useState('');
   const [password, setPassword] = useState('');
   const [confirm,  setConfirm]  = useState('');
   const [loading,  setLoading]  = useState(false);
+  const [selectedGoal, setSelectedGoal] = useState(3);
 
   async function handleRegister() {
     if (!name || !email || !password || !confirm) {
@@ -29,8 +33,9 @@ export default function RegisterScreen({ navigation }) {
     }
     setLoading(true);
     try {
-      await registerUser(email, password, name);
-      navigation.replace('Main');
+      await register(email, password, name, selectedGoal);
+      markOnboardingComplete();
+      // Navigation is handled by AuthContext auto-redirect
     } catch (e) {
       Alert.alert('Registration failed', e.message);
     } finally {
@@ -80,9 +85,15 @@ export default function RegisterScreen({ navigation }) {
             {/* Goal picker */}
             <Text style={styles.label}>Daily screen time goal</Text>
             <View style={styles.goalRow}>
-              {['1h', '2h', '3h', '4h', '5h'].map(g => (
-                <TouchableOpacity key={g} style={styles.goalChip}>
-                  <Text style={styles.goalChipTxt}>{g}</Text>
+              {GOAL_OPTIONS.map(g => (
+                <TouchableOpacity
+                  key={g}
+                  style={[styles.goalChip, selectedGoal === g && styles.goalChipActive]}
+                  onPress={() => setSelectedGoal(g)}
+                >
+                  <Text style={[styles.goalChipTxt, selectedGoal === g && styles.goalChipTxtActive]}>
+                    {g}h
+                  </Text>
                 </TouchableOpacity>
               ))}
             </View>
@@ -132,7 +143,9 @@ const styles = StyleSheet.create({
   },
   goalRow:     { flexDirection: 'row', gap: 8, marginBottom: 20 },
   goalChip:    { flex: 1, backgroundColor: COLORS.grayLight, borderRadius: 10, paddingVertical: 8, alignItems: 'center' },
+  goalChipActive: { backgroundColor: COLORS.orange },
   goalChipTxt: { fontSize: 13, fontWeight: '600', color: COLORS.black },
+  goalChipTxtActive: { color: COLORS.white },
   regBtn:    { backgroundColor: COLORS.orange, borderRadius: 14, paddingVertical: 15, alignItems: 'center' },
   regBtnTxt: { fontSize: 15, fontWeight: '700', color: COLORS.white },
   loginRow:  { flexDirection: 'row', justifyContent: 'center' },

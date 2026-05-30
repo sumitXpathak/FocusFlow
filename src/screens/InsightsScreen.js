@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity,
   StyleSheet, SafeAreaView, Dimensions,
@@ -6,40 +6,72 @@ import {
 import { COLORS, SIZES, SHADOWS } from '../constants/theme';
 import Svg, { Circle } from 'react-native-svg';
 import { useApp } from '../context/AppContext';
+import { useAuth } from '../context/AuthContext';
+import { getWeeklyStats } from '../services/firestoreService';
 
 const { width } = Dimensions.get('window');
 const BAR_WIDTH = (width - SIZES.padding * 2 - 32 - 48) / 7;
 
 const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-const GOAL_MINS = 180;
-
-const CATEGORIES = [
-  { label: 'Social',         pct: 42, color: COLORS.orange },
-  { label: 'Entertainment',  pct: 28, color: COLORS.black  },
-  { label: 'Productivity',   pct: 18, color: COLORS.green  },
-  { label: 'Other',          pct: 12, color: COLORS.grayLight },
-];
 
 export default function InsightsScreen() {
-  const { weeklyData, categoryData, screenTimeToday } = useApp();
+  const { weeklyData, categoryData, screenTimeToday, dailyGoalHours } = useApp();
+  const { user, isAuthenticated } = useAuth();
   const [tab, setTab] = useState('week');
-  const maxVal = Math.max(...weeklyData, 1);
+  const [weekStats, setWeekStats] = useState(null);
 
-  const avgDaily = Math.round(weeklyData.reduce((a, b) => a + b, 0) / 7);
+  const GOAL_MINS = dailyGoalHours * 60;
+
+  // Load detailed weekly stats from Firestore
+  useEffect(() => {
+    if (isAuthenticated && user) {
+      getWeeklyStats(user.uid)
+        .then(stats => setWeekStats(stats))
+        .catch(e => console.log('Weekly stats error:', e.message));
+    }
+  }, [isAuthenticated, user]);
+
+  // Use Firestore weekly data if available, otherwise fall back to context
+  const displayData = weekStats
+    ? weekStats.map(s => s.screenTimeMinutes || 0)
+    : weeklyData;
+
+  const maxVal = Math.max(...displayData, 1);
+
+  const avgDaily = Math.round(displayData.reduce((a, b) => a + b, 0) / 7);
   const avgHrs = Math.floor(avgDaily / 60);
   const avgMins = avgDaily % 60;
-  const goalsMet = weeklyData.filter(d => d <= GOAL_MINS).length;
+  const goalsMet = displayData.filter(d => d <= GOAL_MINS).length;
+
+  // Category data from context (synced from Firestore)
+  const totalCat = Object.values(categoryData).reduce((a, b) => a + b, 0) || 1;
+  const CATEGORIES = [
+    { label: 'Social',         pct: Math.round((categoryData.Social || 0) / totalCat * 100) || 0, color: COLORS.orange },
+    { label: 'Entertainment',  pct: Math.round((categoryData.Entertainment || 0) / totalCat * 100) || 0, color: COLORS.black  },
+    { label: 'Productivity',   pct: Math.round((categoryData.Productivity || 0) / totalCat * 100) || 0, color: COLORS.green  },
+    { label: 'Other',          pct: Math.round((categoryData.Other || 0) / totalCat * 100) || 0, color: COLORS.grayLight },
+  ];
+
+  // Handle case where all categories are 0 — show placeholder
+  const hasCategoryData = totalCat > 1;
 
   // Donut chart segments
   const RADIUS = 35;
   const CIRC = 2 * Math.PI * RADIUS;
   let offset = 0;
   const segments = CATEGORIES.map(cat => {
-    const len = (cat.pct / 100) * CIRC;
-    const seg = { ...cat, len, offset };
+    const pct = hasCategoryData ? cat.pct : 25; // equal segments if no data
+    const len = (pct / 100) * CIRC;
+    const seg = { ...cat, pct, len, offset };
     offset += len;
     return seg;
   });
+
+  // Compute week-over-week change
+  const thisWeekTotal = displayData.reduce((a, b) => a + b, 0);
+  const weekChangeText = thisWeekTotal === 0
+    ? 'No data yet'
+    : `${avgHrs}h ${avgMins}m avg daily`;
 
   return (
     <SafeAreaView style={styles.safe}>
@@ -68,8 +100,10 @@ export default function InsightsScreen() {
         <View style={styles.statsRow}>
           <View style={[styles.statCard, styles.card]}>
             <Text style={styles.statLabel}>Avg daily</Text>
-            <Text style={styles.statVal}>{avgHrs}h {avgMins}m</Text>
-            <Text style={styles.statSub}>↓ 12% vs last week</Text>
+            <Text style={styles.statVal}>
+              {thisWeekTotal === 0 ? '—' : `${avgHrs}h ${avgMins}m`}
+            </Text>
+            <Text style={styles.statSub}>{weekChangeText}</Text>
           </View>
           <View style={[styles.statCard, styles.cardOrange]}>
             <Text style={[styles.statLabel, { color: COLORS.white, opacity: 0.8 }]}>Goals met</Text>
@@ -82,7 +116,7 @@ export default function InsightsScreen() {
         <View style={[styles.chartCard, styles.card]}>
           <Text style={styles.chartTitle}>Daily screen time (hrs)</Text>
           <View style={styles.barChart}>
-            {weeklyData.map((val, i) => {
+            {displayData.map((val, i) => {
               const isToday = i === 6;
               const isOver = val > GOAL_MINS;
               const barH = Math.max((val / maxVal) * 80, 4);
@@ -90,7 +124,7 @@ export default function InsightsScreen() {
               return (
                 <View key={i} style={styles.barCol}>
                   <Text style={styles.barVal}>
-                    {Math.floor(val / 60)}h{val % 60 > 0 ? `${val % 60}m` : ''}
+                    {val === 0 ? '—' : `${Math.floor(val / 60)}h${val % 60 > 0 ? `${val % 60}m` : ''}`}
                   </Text>
                   <View style={[styles.barRect, { height: barH, backgroundColor: color }]} />
                   <Text style={[styles.barDay, isToday && { color: COLORS.orange, fontWeight: '700' }]}>
@@ -136,7 +170,9 @@ export default function InsightsScreen() {
                 <View key={cat.label} style={styles.legendRow}>
                   <View style={[styles.legendDot, { backgroundColor: cat.color }]} />
                   <Text style={styles.legendLabel}>{cat.label}</Text>
-                  <Text style={styles.legendPct}>{cat.pct}%</Text>
+                  <Text style={styles.legendPct}>
+                    {hasCategoryData ? `${cat.pct}%` : '—'}
+                  </Text>
                 </View>
               ))}
             </View>
@@ -147,8 +183,14 @@ export default function InsightsScreen() {
         <View style={[styles.chartCard, styles.card]}>
           <Text style={styles.chartTitle}>💡 This week's insight</Text>
           <Text style={styles.insightText}>
-            You spend 42% of your screen time on social media. Reducing by just 30 min/day
-            could earn you an extra <Text style={{ color: COLORS.orange, fontWeight: '700' }}>210 bonus points</Text> per week.
+            {thisWeekTotal === 0
+              ? 'Start tracking your screen time to unlock personalised insights and tips!'
+              : `You spend ${CATEGORIES[0].pct}% of your screen time on social media. Reducing by just 30 min/day could earn you an extra `
+            }
+            {thisWeekTotal > 0 && (
+              <Text style={{ color: COLORS.orange, fontWeight: '700' }}>210 bonus points</Text>
+            )}
+            {thisWeekTotal > 0 ? ' per week.' : ''}
           </Text>
         </View>
 

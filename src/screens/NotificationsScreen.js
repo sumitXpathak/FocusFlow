@@ -1,24 +1,95 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity,
   StyleSheet, SafeAreaView, Switch, Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS, SIZES, SHADOWS } from '../constants/theme';
+import { useAuth } from '../context/AuthContext';
+import {
+  saveNotificationPrefs,
+  getNotificationPrefs,
+} from '../services/firestoreService';
+import {
+  scheduleDailyReminder,
+  requestNotificationPermissions,
+} from '../services/notificationService';
 
 const TIME_OPTIONS = ['6:00 AM', '7:00 AM', '8:00 AM', '9:00 AM', '8:00 PM', '9:00 PM', '10:00 PM'];
 
+function parseTime(timeStr) {
+  const match = timeStr.match(/(\d+):(\d+)\s*(AM|PM)/i);
+  if (!match) return { hour: 20, minute: 0 };
+  let hour = parseInt(match[1], 10);
+  const minute = parseInt(match[2], 10);
+  const ampm = match[3].toUpperCase();
+  if (ampm === 'PM' && hour !== 12) hour += 12;
+  if (ampm === 'AM' && hour === 12) hour = 0;
+  return { hour, minute };
+}
+
 export default function NotificationsScreen({ navigation }) {
+  const { user, isAuthenticated } = useAuth();
   const [dailyReminder,   setDailyReminder]   = useState(true);
   const [focusNudge,      setFocusNudge]       = useState(true);
   const [streakAlert,     setStreakAlert]       = useState(true);
   const [goalAlert,       setGoalAlert]        = useState(true);
   const [weeklyReport,    setWeeklyReport]     = useState(false);
   const [selectedTime,    setSelectedTime]     = useState('8:00 PM');
+  const [loaded,          setLoaded]           = useState(false);
 
-  function handleSave() {
-    // TODO: call scheduleDailyReminder(hour, minute) from notificationService
-    Alert.alert('Saved!', 'Your notification preferences have been updated.');
+  // Load saved preferences from Firestore
+  useEffect(() => {
+    if (isAuthenticated && user) {
+      getNotificationPrefs(user.uid)
+        .then(prefs => {
+          if (prefs) {
+            setDailyReminder(prefs.dailyReminder ?? true);
+            setFocusNudge(prefs.focusNudge ?? true);
+            setStreakAlert(prefs.streakAlert ?? true);
+            setGoalAlert(prefs.goalAlert ?? true);
+            setWeeklyReport(prefs.weeklyReport ?? false);
+            setSelectedTime(prefs.reminderTime || '8:00 PM');
+          }
+          setLoaded(true);
+        })
+        .catch(() => setLoaded(true));
+    } else {
+      setLoaded(true);
+    }
+  }, [isAuthenticated, user]);
+
+  async function handleSave() {
+    try {
+      // Request notification permissions
+      const granted = await requestNotificationPermissions();
+      if (!granted) {
+        Alert.alert('Permissions needed', 'Please enable notifications in your device settings.');
+        return;
+      }
+
+      // Schedule the daily reminder
+      if (dailyReminder) {
+        const { hour, minute } = parseTime(selectedTime);
+        await scheduleDailyReminder(hour, minute);
+      }
+
+      // Save preferences to Firestore
+      if (isAuthenticated && user) {
+        await saveNotificationPrefs(user.uid, {
+          dailyReminder,
+          focusNudge,
+          streakAlert,
+          goalAlert,
+          weeklyReport,
+          reminderTime: selectedTime,
+        });
+      }
+
+      Alert.alert('Saved!', 'Your notification preferences have been updated.');
+    } catch (e) {
+      Alert.alert('Error', e.message);
+    }
   }
 
   const Row = ({ icon, iconBg, label, sub, value, onToggle }) => (

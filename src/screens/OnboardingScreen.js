@@ -4,6 +4,7 @@ import {
   SafeAreaView, FlatList, Dimensions,
 } from 'react-native';
 import { COLORS, SIZES } from '../constants/theme';
+import { useAuth } from '../context/AuthContext';
 
 const { width } = Dimensions.get('window');
 
@@ -37,17 +38,20 @@ const SLIDES = [
 export default function OnboardingScreen({ navigation }) {
   const [current, setCurrent] = useState(0);
   const ref = useRef(null);
+  const { markOnboardingComplete } = useAuth();
 
   function next() {
     if (current < SLIDES.length - 1) {
       ref.current?.scrollToIndex({ index: current + 1 });
       setCurrent(current + 1);
     } else {
+      markOnboardingComplete();
       navigation?.navigate('Login');
     }
   }
 
   function skip() {
+    markOnboardingComplete();
     navigation?.navigate('Login');
   }
 
