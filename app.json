@@ -21,6 +21,12 @@
     },
     "plugins": [
       "expo-notifications"
-    ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "83ed9516-f526-4739-b30f-33a01e9bd12d"
+      }
+    },
+    "owner": "baba001s-organization"
   }
 }
