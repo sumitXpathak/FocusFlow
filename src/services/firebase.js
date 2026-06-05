@@ -2,10 +2,6 @@
 // ─────────────────────────────────────────────
 // SETUP INSTRUCTIONS:
 // 1. Go to https://console.firebase.google.com
-// src/services/firebase.js
-// ─────────────────────────────────────────────
-// SETUP INSTRUCTIONS:
-// 1. Go to https://console.firebase.google.com
 // 2. Create a new project called "FocusFlow"
 // 3. Add an Android/iOS app
 // 4. Copy your config object below
