@@ -1,0 +1,13 @@
+node_modules/
+
+# Sensitive files - NEVER commit these
+GoogleService-Info.plist
+.env
+.env.local
+.env.production
+
+# Expo
+.expo/
+
+# Temporary files
+replacements.txt

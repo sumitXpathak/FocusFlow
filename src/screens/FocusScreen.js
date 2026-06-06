@@ -1,13 +1,14 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity,
-  StyleSheet, SafeAreaView,
+  StyleSheet, SafeAreaView, Alert
 } from 'react-native';
 import Svg, { Circle } from 'react-native-svg';
 import { COLORS, SIZES, SHADOWS } from '../constants/theme';
 import { useTimer } from '../context/TimerContext';
 import { useApp } from '../context/AppContext';
 import { SESSION_TYPES } from '../constants/data';
+import ExpoAppBlockerModule from '../../modules/expo-app-blocker/src/ExpoAppBlockerModule';
 
 export default function FocusScreen() {
   const { sessionType, displayTime, isRunning, isBreak, progress,
@@ -17,6 +18,50 @@ export default function FocusScreen() {
   const RADIUS = 74;
   const CIRCUMFERENCE = 2 * Math.PI * RADIUS;
   const strokeDash = CIRCUMFERENCE * (1 - progress);
+
+  // Stop blocking when unmounting or timer ends
+  useEffect(() => {
+    if (!isRunning) {
+      if (ExpoAppBlockerModule?.stopBlocking) ExpoAppBlockerModule.stopBlocking();
+    }
+  }, [isRunning]);
+
+  const handleStartTimer = () => {
+    if (blockingEnabled && !isBreak) {
+      // Check native permissions before starting
+      if (ExpoAppBlockerModule?.hasUsagePermission && ExpoAppBlockerModule?.hasOverlayPermission) {
+        if (!ExpoAppBlockerModule.hasUsagePermission()) {
+          Alert.alert("Permission Required", "Usage Access is required to know which app you are opening. Please enable it in Settings.", [
+            { text: "Cancel", style: "cancel" },
+            { text: "Open Settings", onPress: () => ExpoAppBlockerModule.requestUsagePermission() }
+          ]);
+          return;
+        }
+        if (!ExpoAppBlockerModule.hasOverlayPermission()) {
+          Alert.alert("Permission Required", "Display Over Other Apps permission is required to draw the block screen. Please enable it in Settings.", [
+            { text: "Cancel", style: "cancel" },
+            { text: "Open Settings", onPress: () => ExpoAppBlockerModule.requestOverlayPermission() }
+          ]);
+          return;
+        }
+
+        // Start native blocking
+        const blockedPackages = apps.filter(a => a.blocked).map(a => a.id);
+        ExpoAppBlockerModule.startBlocking(blockedPackages);
+      }
+    }
+    startTimer();
+  };
+
+  const handlePauseTimer = () => {
+    if (ExpoAppBlockerModule?.stopBlocking) ExpoAppBlockerModule.stopBlocking();
+    pauseTimer();
+  };
+
+  const handleResetTimer = () => {
+    if (ExpoAppBlockerModule?.stopBlocking) ExpoAppBlockerModule.stopBlocking();
+    resetTimer();
+  };
 
   return (
     <SafeAreaView style={styles.safe}>
@@ -86,13 +131,13 @@ export default function FocusScreen() {
         <View style={styles.btnRow}>
           <TouchableOpacity
             style={styles.btnOrange}
-            onPress={isRunning ? pauseTimer : startTimer}
+            onPress={isRunning ? handlePauseTimer : handleStartTimer}
           >
             <Text style={styles.btnOrangeTxt}>
               {isRunning ? '⏸  Pause' : '▶  Start'}
             </Text>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.btnDark} onPress={resetTimer}>
+          <TouchableOpacity style={styles.btnDark} onPress={handleResetTimer}>
             <Text style={styles.btnDarkTxt}>↩  Reset</Text>
           </TouchableOpacity>
         </View>
