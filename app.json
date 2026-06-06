@@ -11,13 +11,14 @@
     },
     "ios": {
       "supportsTablet": false,
-      "bundleIdentifier": "com.yourname.focusflow"
+      "bundleIdentifier": "com.opt.focusflow"
     },
     "android": {
       "adaptiveIcon": {
         "backgroundColor": "#FF6B35"
       },
-      "package": "com.yourname.focusflow"
+      "package": "com.opt.focusflow",
+      "googleServicesFile": "./google-services.json"
     },
     "plugins": [
       "expo-notifications"

@@ -1,25 +1,54 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
-import { COLORS, SIZES } from '../constants/theme';
+import { COLORS, SIZES, SHADOWS } from '../constants/theme';
+import { Ionicons } from '@expo/vector-icons';
 
-const WEEK_DAYS = ['T', 'W', 'Th', 'F', 'Sa', 'Su', 'M'];
+const WEEK_DAYS = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
 
 export default function StreakBanner({ streak }) {
+  // We'll use the current day of the week to highlight 'today'
+  const todayIdx = new Date().getDay();
+
   return (
     <View style={styles.banner}>
-      <View style={styles.left}>
-        <Text style={styles.flame}>🔥</Text>
-        <View>
-          <Text style={styles.days}>{streak} day streak!</Text>
+      <View style={styles.headerRow}>
+        <View style={styles.iconWrap}>
+          <Text style={styles.flame}>🔥</Text>
+        </View>
+        <View style={styles.textWrap}>
+          <Text style={styles.days}>{streak} Day Streak!</Text>
           <Text style={styles.sub}>Meet your screen time goal every day</Text>
         </View>
       </View>
-      <View style={styles.dots}>
-        {WEEK_DAYS.map((d, i) => (
-          <View key={i} style={[styles.dot, i < 6 ? styles.done : styles.today]}>
-            <Text style={[styles.dotTxt, i < 6 ? styles.doneTxt : styles.todayTxt]}>{d}</Text>
-          </View>
-        ))}
+      
+      <View style={styles.dotsWrap}>
+        {WEEK_DAYS.map((d, i) => {
+          // Mock logic: days before today are done, today is active
+          const isDone = i < todayIdx;
+          const isToday = i === todayIdx;
+          
+          return (
+            <View key={i} style={styles.dayCol}>
+              <View style={[
+                styles.dot, 
+                isDone && styles.done, 
+                isToday && styles.today, 
+                (!isDone && !isToday) && styles.upcoming
+              ]}>
+                {isDone ? (
+                  <Ionicons name="checkmark-sharp" size={16} color={COLORS.white} />
+                ) : (
+                  <Text style={[
+                    styles.dotTxt, 
+                    isToday ? styles.todayTxt : styles.upcomingTxt
+                  ]}>
+                    {d}
+                  </Text>
+                )}
+              </View>
+            </View>
+          );
+        })}
       </View>
     </View>
   );
@@ -27,23 +56,31 @@ export default function StreakBanner({ streak }) {
 
 const styles = StyleSheet.create({
   banner: {
-    marginHorizontal: SIZES.padding, marginBottom: 12,
-    backgroundColor: COLORS.black, borderRadius: SIZES.radius,
-    padding: 14, flexDirection: 'row',
-    alignItems: 'center', justifyContent: 'space-between',
+    marginHorizontal: SIZES.padding, marginBottom: 16,
+    backgroundColor: COLORS.white, borderRadius: SIZES.radiusLg,
+    padding: 20, ...SHADOWS.card,
   },
-  left: { flexDirection: 'row', alignItems: 'center', gap: 10, flex: 1 },
-  flame: { fontSize: 26 },
-  days: { fontSize: 15, fontWeight: '700', color: COLORS.white },
-  sub: { fontSize: 10, color: COLORS.gray, marginTop: 2 },
-  dots: { flexDirection: 'row', gap: 4 },
+  headerRow: { flexDirection: 'row', alignItems: 'center', gap: 14, marginBottom: 20 },
+  iconWrap: {
+    backgroundColor: COLORS.orangeLight,
+    width: 48, height: 48,
+    borderRadius: 24,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  flame: { fontSize: 24 },
+  textWrap: { flex: 1 },
+  days: { fontSize: 18, fontWeight: '800', color: COLORS.black, letterSpacing: -0.3 },
+  sub: { fontSize: 13, color: COLORS.gray, marginTop: 4 },
+  dotsWrap: { flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 4 },
+  dayCol: { alignItems: 'center' },
   dot: {
-    width: 22, height: 22, borderRadius: 11,
+    width: 32, height: 32, borderRadius: 16,
     alignItems: 'center', justifyContent: 'center',
   },
   done: { backgroundColor: COLORS.orange },
-  today: { backgroundColor: COLORS.white },
-  dotTxt: { fontSize: 8, fontWeight: '700' },
-  doneTxt: { color: COLORS.white },
-  todayTxt: { color: COLORS.black },
+  today: { backgroundColor: COLORS.black },
+  upcoming: { backgroundColor: COLORS.grayLight },
+  dotTxt: { fontSize: 13, fontWeight: '700' },
+  todayTxt: { color: COLORS.white },
+  upcomingTxt: { color: COLORS.gray },
 });
