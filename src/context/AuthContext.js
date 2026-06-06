@@ -22,27 +22,45 @@ export function AuthProvider({ children }) {
 
   // ── Listen to Firebase auth state ───────────
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
-      setUser(firebaseUser);
+    let timeoutId;
+    let unsubscribe;
 
-      if (firebaseUser) {
-        try {
-          const profile = await getUserProfile(firebaseUser.uid);
-          setUserProfile(profile);
-        } catch (e) {
-          console.log('Failed to load profile:', e.message);
+    try {
+      unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+        clearTimeout(timeoutId);
+        setUser(firebaseUser);
+
+        if (firebaseUser) {
+          try {
+            const profile = await getUserProfile(firebaseUser.uid);
+            setUserProfile(profile);
+          } catch (e) {
+            console.log('Failed to load profile:', e.message);
+          }
+          // Mark onboarding as completed if user logged in
+          await AsyncStorage.setItem('focusflow_onboarded', 'true');
+          setHasOnboarded(true);
+        } else {
+          setUserProfile(null);
         }
-        // Mark onboarding as completed if user logged in
-        await AsyncStorage.setItem('focusflow_onboarded', 'true');
-        setHasOnboarded(true);
-      } else {
-        setUserProfile(null);
-      }
 
+        setLoading(false);
+      });
+    } catch (e) {
+      console.log('Firebase auth listener failed:', e.message);
       setLoading(false);
-    });
+    }
 
-    return unsubscribe;
+    // Safety timeout — if Firebase never responds, proceed anyway
+    timeoutId = setTimeout(() => {
+      console.log('Firebase auth timeout — proceeding without auth');
+      setLoading(false);
+    }, 5000);
+
+    return () => {
+      clearTimeout(timeoutId);
+      if (unsubscribe) unsubscribe();
+    };
   }, []);
 
   // ── Check onboarding flag on mount ──────────
