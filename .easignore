@@ -11,3 +11,7 @@ GoogleService-Info.plist
 
 # Temporary files
 replacements.txt
+
+# Prebuild directories
+/android
+/ios
