@@ -28,6 +28,25 @@ function parseTime(timeStr) {
   return { hour, minute };
 }
 
+// Module-scoped so it isn't recreated (and remounted) on every render.
+const Row = ({ icon, iconBg, label, sub, value, onToggle }) => (
+  <View style={styles.row}>
+    <View style={[styles.rowIcon, { backgroundColor: iconBg }]}>
+      <Ionicons name={icon} size={18} color={COLORS.white} />
+    </View>
+    <View style={styles.rowBody}>
+      <Text style={styles.rowLabel}>{label}</Text>
+      {sub && <Text style={styles.rowSub}>{sub}</Text>}
+    </View>
+    <Switch
+      value={value}
+      onValueChange={onToggle}
+      trackColor={{ false: '#E5E7EB', true: COLORS.orange }}
+      thumbColor={COLORS.white}
+    />
+  </View>
+);
+
 export default function NotificationsScreen({ navigation }) {
   const { user, isAuthenticated } = useAuth();
   const [dailyReminder,   setDailyReminder]   = useState(true);
@@ -91,24 +110,6 @@ export default function NotificationsScreen({ navigation }) {
       Alert.alert('Error', e.message);
     }
   }
-
-  const Row = ({ icon, iconBg, label, sub, value, onToggle }) => (
-    <View style={styles.row}>
-      <View style={[styles.rowIcon, { backgroundColor: iconBg }]}>
-        <Ionicons name={icon} size={18} color={COLORS.white} />
-      </View>
-      <View style={styles.rowBody}>
-        <Text style={styles.rowLabel}>{label}</Text>
-        {sub && <Text style={styles.rowSub}>{sub}</Text>}
-      </View>
-      <Switch
-        value={value}
-        onValueChange={onToggle}
-        trackColor={{ false: '#E5E7EB', true: COLORS.orange }}
-        thumbColor={COLORS.white}
-      />
-    </View>
-  );
 
   return (
     <SafeAreaView style={styles.safe}>

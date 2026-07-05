@@ -24,17 +24,19 @@ describe('RewardsScreen', () => {
 
     it('renders XP level text', () => {
       renderRewards();
-      expect(screen.getByText(/LEVEL 8/i)).toBeTruthy();
+      // New accounts start at level 1.
+      expect(screen.getByText(/LEVEL 1 —/i)).toBeTruthy();
     });
 
     it('renders XP progress text', () => {
       renderRewards();
-      expect(screen.getAllByText(/1,240/)[0]).toBeTruthy();
+      // Fresh state: 0 XP out of the 100 needed for level 2.
+      expect(screen.getByText(/0 \/ 100 XP/)).toBeTruthy();
     });
 
     it('renders XP to next level', () => {
       renderRewards();
-      expect(screen.getByText(/260.*XP to Level/i)).toBeTruthy();
+      expect(screen.getByText(/100 XP to Level 2/i)).toBeTruthy();
     });
 
     it('renders leaderboard rank', () => {
@@ -44,7 +46,8 @@ describe('RewardsScreen', () => {
 
     it('renders streak card', () => {
       renderRewards();
-      expect(screen.getByText(/45.*Day Streak/i)).toBeTruthy();
+      // Streak starts at 0 for a fresh session.
+      expect(screen.getByText('0 Day Streak!')).toBeTruthy();
     });
 
     it('renders Badges section', () => {
@@ -99,7 +102,8 @@ describe('RewardsScreen', () => {
 
     it('renders points badge in header', () => {
       renderRewards();
-      expect(screen.getByText(/1,240.*pts/)).toBeTruthy();
+      // Points start at 0 for a fresh session.
+      expect(screen.getByText('⭐ 0 pts')).toBeTruthy();
     });
 
     it('renders streak motivational text', () => {
@@ -171,9 +175,10 @@ describe('InsightsScreen', () => {
       expect(screen.getByText(/\/\s*7/)).toBeTruthy();
     });
 
-    it('renders percentage decrease vs last week', () => {
+    it('renders average-daily summary sub text', () => {
       renderInsights();
-      expect(screen.getByText(/↓.*12%.*vs last week/i)).toBeTruthy();
+      // With no recorded usage, the Avg-daily card shows a "No data yet" note.
+      expect(screen.getByText(/No data yet/i)).toBeTruthy();
     });
 
     it('renders bar chart title', () => {
@@ -207,9 +212,10 @@ describe('InsightsScreen', () => {
       expect(screen.getByText('Productivity')).toBeTruthy();
     });
 
-    it('renders Social percentage at 42%', () => {
+    it('renders Social category percentage placeholder', () => {
       renderInsights();
-      expect(screen.getAllByText(/42/)[0]).toBeTruthy();
+      // No category data yet → percentages render as an em-dash placeholder.
+      expect(screen.getAllByText('—')[0]).toBeTruthy();
     });
 
     it('renders insight tip card', () => {

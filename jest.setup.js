@@ -5,6 +5,44 @@ jest.mock('@react-native-async-storage/async-storage', () =>
   require('@react-native-async-storage/async-storage/jest/async-storage-mock')
 );
 
+// ── Mock Firebase SDK ────────────────────────────────
+// The real Firebase modules ship as ESM and would try to open network
+// connections in tests. Stub the three entry points our code imports so
+// tests run hermetically and never hit Firebase.
+jest.mock('firebase/app', () => ({
+  initializeApp: jest.fn(() => ({})),
+  getApps: jest.fn(() => []),
+  getApp: jest.fn(() => ({})),
+}));
+
+jest.mock('firebase/auth', () => ({
+  initializeAuth: jest.fn(() => ({})),
+  getAuth: jest.fn(() => ({})),
+  getReactNativePersistence: jest.fn(() => ({})),
+  onAuthStateChanged: jest.fn(() => jest.fn()), // returns an unsubscribe fn
+  createUserWithEmailAndPassword: jest.fn(() => Promise.resolve({ user: { uid: 'test-uid' } })),
+  signInWithEmailAndPassword: jest.fn(() => Promise.resolve({ user: { uid: 'test-uid' } })),
+  signOut: jest.fn(() => Promise.resolve()),
+  sendPasswordResetEmail: jest.fn(() => Promise.resolve()),
+  updateProfile: jest.fn(() => Promise.resolve()),
+}));
+
+jest.mock('firebase/firestore', () => ({
+  getFirestore: jest.fn(() => ({})),
+  doc: jest.fn(() => ({})),
+  collection: jest.fn(() => ({})),
+  query: jest.fn(() => ({})),
+  where: jest.fn(() => ({})),
+  orderBy: jest.fn(() => ({})),
+  setDoc: jest.fn(() => Promise.resolve()),
+  addDoc: jest.fn(() => Promise.resolve({ id: 'test-doc' })),
+  updateDoc: jest.fn(() => Promise.resolve()),
+  deleteDoc: jest.fn(() => Promise.resolve()),
+  getDoc: jest.fn(() => Promise.resolve({ exists: () => false, data: () => null })),
+  getDocs: jest.fn(() => Promise.resolve({ docs: [] })),
+  writeBatch: jest.fn(() => ({ delete: jest.fn(), commit: jest.fn(() => Promise.resolve()) })),
+}));
+
 // Mock expo-notifications
 jest.mock('expo-notifications', () => ({
   requestPermissionsAsync: jest.fn(() => Promise.resolve({ status: 'granted' })),

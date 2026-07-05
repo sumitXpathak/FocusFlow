@@ -4,7 +4,7 @@ import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.Service
-import android.app.usage.UsageStats
+import android.app.usage.UsageEvents
 import android.app.usage.UsageStatsManager
 import android.content.Context
 import android.content.Intent
@@ -28,6 +28,7 @@ class BlockingService : Service() {
     private lateinit var windowManager: WindowManager
     private var overlayView: View? = null
     private var blockedPackages = listOf<String>()
+    private var lastForegroundPackage: String? = null
 
     companion object {
         var activeBlockedPackages: List<String> = emptyList()
@@ -76,31 +77,44 @@ class BlockingService : Service() {
             if (!isRunning) return
             
             val currentApp = getForegroundApp()
-            if (currentApp != null && blockedPackages.contains(currentApp)) {
+            if (currentApp != null && currentApp != packageName && blockedPackages.contains(currentApp)) {
                 showOverlay()
             } else {
                 removeOverlay()
             }
-            
-            handler.postDelayed(this, 1000)
+
+            handler.postDelayed(this, 800)
         }
     }
 
     private fun getForegroundApp(): String? {
         val usageStatsManager = getSystemService(Context.USAGE_STATS_SERVICE) as UsageStatsManager
-        val time = System.currentTimeMillis()
-        val stats = usageStatsManager.queryUsageStats(UsageStatsManager.INTERVAL_DAILY, time - 1000 * 10, time)
-        
-        if (stats != null) {
-            var latestStat: UsageStats? = null
-            for (stat in stats) {
-                if (latestStat == null || stat.lastTimeUsed > latestStat.lastTimeUsed) {
-                    latestStat = stat
-                }
+        val now = System.currentTimeMillis()
+        // Query recent usage events — unlike queryUsageStats(), this reflects
+        // foreground changes within ~1s, which is required for real-time blocking.
+        val events = usageStatsManager.queryEvents(now - 1000 * 10, now)
+        val event = UsageEvents.Event()
+        var latestPackage: String? = null
+        var latestTime = 0L
+
+        while (events.hasNextEvent()) {
+            events.getNextEvent(event)
+            val isForegroundEvent = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                event.eventType == UsageEvents.Event.ACTIVITY_RESUMED
+            } else {
+                @Suppress("DEPRECATION")
+                event.eventType == UsageEvents.Event.MOVE_TO_FOREGROUND
             }
-            return latestStat?.packageName
+            if (isForegroundEvent && event.timeStamp >= latestTime) {
+                latestTime = event.timeStamp
+                latestPackage = event.packageName
+            }
         }
-        return null
+
+        if (latestPackage != null) {
+            lastForegroundPackage = latestPackage
+        }
+        return lastForegroundPackage
     }
 
     private fun showOverlay() {
@@ -156,10 +170,13 @@ class BlockingService : Service() {
     }
 
     private fun removeOverlay() {
-        if (overlayView != null) {
-            windowManager.removeView(overlayView)
-            overlayView = null
+        val view = overlayView ?: return
+        try {
+            windowManager.removeView(view)
+        } catch (_: Exception) {
+            // View may already be detached — ignore.
         }
+        overlayView = null
     }
 
     private fun createNotificationChannel() {

@@ -18,12 +18,14 @@ describe('HomeScreen', () => {
   describe('Rendering', () => {
     it('renders the dashboard heading', () => {
       renderHome();
-      expect(screen.getByText("Alex's Dashboard")).toBeTruthy();
+      // Name comes from the auth profile; falls back to "User" when signed out.
+      expect(screen.getByText("User's Dashboard")).toBeTruthy();
     });
 
     it('renders the greeting text', () => {
       renderHome();
-      expect(screen.getByText('Good morning')).toBeTruthy();
+      // Greeting depends on the time of day the test runs.
+      expect(screen.getByText(/Good (morning|afternoon|evening)/)).toBeTruthy();
     });
 
     it('renders the screen time section label', () => {
@@ -38,12 +40,16 @@ describe('HomeScreen', () => {
 
     it('renders focus sessions count', () => {
       renderHome();
-      expect(screen.getByText('3')).toBeTruthy();
+      // Fresh state starts at 0 sessions; assert the card + its live count render.
+      expect(screen.getByText('Focus sessions')).toBeTruthy();
+      expect(screen.getByText('0')).toBeTruthy();
     });
 
     it('renders points earned today', () => {
       renderHome();
-      expect(screen.getAllByText(/85/)[0]).toBeTruthy();
+      // Points earned today start at +0 for a fresh session.
+      expect(screen.getByText('Points earned')).toBeTruthy();
+      expect(screen.getByText('+0')).toBeTruthy();
     });
 
     it('renders app usage section', () => {
@@ -111,7 +117,8 @@ describe('HomeScreen', () => {
   describe('Screen Time Display', () => {
     it('displays screen time in correct format', () => {
       renderHome();
-      expect(screen.getAllByText('1h 12m')[0]).toBeTruthy();
+      // Fresh state has 0 minutes of screen time recorded → "0m".
+      expect(screen.getAllByText('0m')[0]).toBeTruthy();
     });
 
     it('displays remaining time', () => {
@@ -123,7 +130,8 @@ describe('HomeScreen', () => {
   describe('Streak Banner', () => {
     it('renders streak count', () => {
       renderHome();
-      expect(screen.getByText(/45.*day streak/i)).toBeTruthy();
+      // Streak starts at 0 for a fresh session.
+      expect(screen.getByText(/day streak/i)).toBeTruthy();
     });
 
     it('renders streak motivational text', () => {

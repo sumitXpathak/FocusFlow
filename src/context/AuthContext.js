@@ -12,7 +12,22 @@ import {
   logoutUser,
 } from '../services/authService';
 
-const AuthContext = createContext();
+// Safe defaults so consumers rendered outside <AuthProvider> (e.g. in isolated
+// tests, or by accident) degrade gracefully instead of crashing on destructure.
+const DEFAULT_AUTH = {
+  user: null,
+  userProfile: null,
+  loading: false,
+  isAuthenticated: false,
+  hasCompletedOnboarding: false,
+  login: async () => {},
+  register: async () => {},
+  logout: async () => {},
+  refreshProfile: async () => {},
+  markOnboardingComplete: () => {},
+};
+
+const AuthContext = createContext(DEFAULT_AUTH);
 
 export function AuthProvider({ children }) {
   const [user, setUser]                           = useState(null);
@@ -124,4 +139,4 @@ export function AuthProvider({ children }) {
   );
 }
 
-export const useAuth = () => useContext(AuthContext);
+export const useAuth = () => useContext(AuthContext) || DEFAULT_AUTH;

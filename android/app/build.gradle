@@ -179,6 +179,12 @@ dependencies {
     } else {
         implementation jscFlavor
     }
+
+    // Import the Firebase BoM
+    implementation platform("com.google.firebase:firebase-bom:34.14.0")
+
+    // Add the dependencies for Firebase products you want to use
+    implementation("com.google.firebase:firebase-analytics")
 }
 
 apply plugin: 'com.google.gms.google-services'

@@ -22,12 +22,14 @@ describe('SettingsScreen', () => {
 
     it('renders profile name', () => {
       renderSettings();
-      expect(screen.getByText('Alex Kumar')).toBeTruthy();
+      // Name comes from the auth profile; falls back to "User" when signed out.
+      expect(screen.getByText('User')).toBeTruthy();
     });
 
     it('renders profile level and points', () => {
       renderSettings();
-      expect(screen.getByText(/Level 8/)).toBeTruthy();
+      // New accounts start at level 1 with 0 points.
+      expect(screen.getByText(/Level 1/)).toBeTruthy();
     });
 
     it('renders Edit button', () => {

@@ -12,17 +12,17 @@ describe('StreakBanner', () => {
 
   it('renders streak count correctly', () => {
     render(<StreakBanner streak={45} />);
-    expect(screen.getByText('45 day streak!')).toBeTruthy();
+    expect(screen.getByText('45 Day Streak!')).toBeTruthy();
   });
 
   it('renders streak count of 1 correctly', () => {
     render(<StreakBanner streak={1} />);
-    expect(screen.getByText('1 day streak!')).toBeTruthy();
+    expect(screen.getByText('1 Day Streak!')).toBeTruthy();
   });
 
   it('renders streak count of 0', () => {
     render(<StreakBanner streak={0} />);
-    expect(screen.getByText('0 day streak!')).toBeTruthy();
+    expect(screen.getByText('0 Day Streak!')).toBeTruthy();
   });
 
   it('renders motivational sub text', () => {
@@ -32,10 +32,8 @@ describe('StreakBanner', () => {
 
   it('renders 7 day dots', () => {
     render(<StreakBanner streak={45} />);
-    const days = ['T', 'W', 'Th', 'F', 'Sa', 'Su', 'M'];
-    days.forEach(day => {
-      expect(screen.getByText(day)).toBeTruthy();
-    });
+    // The weekday strip always renders one column per day of the week.
+    expect(screen.getAllByTestId('streak-day-col')).toHaveLength(7);
   });
 
   it('renders flame emoji', () => {
@@ -45,7 +43,7 @@ describe('StreakBanner', () => {
 
   it('renders with large streak numbers', () => {
     render(<StreakBanner streak={365} />);
-    expect(screen.getByText('365 day streak!')).toBeTruthy();
+    expect(screen.getByText('365 Day Streak!')).toBeTruthy();
   });
 });
 

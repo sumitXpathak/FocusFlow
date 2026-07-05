@@ -10,6 +10,35 @@ import { Ionicons } from '@expo/vector-icons';
 
 const GOAL_OPTIONS = [1, 2, 3, 4, 5];
 
+// Defined at module scope — if this lived inside the component it would be
+// recreated on every render, remounting the TextInput and dropping keyboard
+// focus after each keystroke.
+const Field = ({ label, value, onChange, placeholder, secure, keyboardType, showToggle, toggleState, onToggle, autoComplete, textContentType }) => (
+  <View style={styles.inputContainer}>
+    <Text style={styles.label}>{label}</Text>
+    <View style={styles.inputWrap}>
+      <TextInput
+        style={styles.input}
+        value={value}
+        onChangeText={onChange}
+        placeholder={placeholder}
+        placeholderTextColor={COLORS.gray}
+        secureTextEntry={secure && !toggleState}
+        keyboardType={keyboardType || 'default'}
+        autoCapitalize={secure || keyboardType === 'email-address' ? 'none' : 'words'}
+        autoCorrect={false}
+        autoComplete={autoComplete}
+        textContentType={textContentType}
+      />
+      {showToggle && (
+        <TouchableOpacity onPress={onToggle} style={styles.eyeBtn}>
+          <Ionicons name={toggleState ? 'eye-off-outline' : 'eye-outline'} size={20} color={COLORS.gray} />
+        </TouchableOpacity>
+      )}
+    </View>
+  </View>
+);
+
 export default function RegisterScreen({ navigation }) {
   const { register, markOnboardingComplete } = useAuth();
   const [name,     setName]     = useState('');
@@ -48,32 +77,6 @@ export default function RegisterScreen({ navigation }) {
       setLoading(false);
     }
   }
-
-  const Field = ({ label, value, onChange, placeholder, secure, keyboardType, showToggle, toggleState, onToggle, autoComplete, textContentType }) => (
-    <View style={styles.inputContainer}>
-      <Text style={styles.label}>{label}</Text>
-      <View style={styles.inputWrap}>
-        <TextInput
-          style={styles.input}
-          value={value}
-          onChangeText={onChange}
-          placeholder={placeholder}
-          placeholderTextColor={COLORS.gray}
-          secureTextEntry={secure && !toggleState}
-          keyboardType={keyboardType || 'default'}
-          autoCapitalize={secure || keyboardType === 'email-address' ? 'none' : 'words'}
-          autoCorrect={false}
-          autoComplete={autoComplete}
-          textContentType={textContentType}
-        />
-        {showToggle && (
-          <TouchableOpacity onPress={onToggle} style={styles.eyeBtn}>
-            <Ionicons name={toggleState ? 'eye-off-outline' : 'eye-outline'} size={20} color={COLORS.gray} />
-          </TouchableOpacity>
-        )}
-      </View>
-    </View>
-  );
 
   return (
     <SafeAreaView style={styles.safe}>

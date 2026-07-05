@@ -1,10 +1,10 @@
 export const DEFAULT_APPS = [
-  { id: '1', name: 'Facebook',   icon: '📘', color: '#E8F0FE', limit: 45,  used: 48, blocked: false },
-  { id: '2', name: 'Instagram',  icon: '📸', color: '#FDE8F0', limit: 60,  used: 32, blocked: true  },
-  { id: '3', name: 'YouTube',    icon: '▶️', color: '#FFE8E8', limit: 45,  used: 41, blocked: false },
-  { id: '4', name: 'Twitter/X',  icon: '🐦', color: '#E8F8FF', limit: 30,  used: 13, blocked: true  },
-  { id: '5', name: 'TikTok',     icon: '🎵', color: '#F0E8FF', limit: 30,  used: 8,  blocked: true  },
-  { id: '6', name: 'Reddit',     icon: '🤖', color: '#FFE8E0', limit: 20,  used: 5,  blocked: false },
+  { id: '1', name: 'Facebook',   icon: '📘', color: '#E8F0FE', limit: 45,  used: 48, blocked: false, packageName: 'com.facebook.katana' },
+  { id: '2', name: 'Instagram',  icon: '📸', color: '#FDE8F0', limit: 60,  used: 32, blocked: true,  packageName: 'com.instagram.android' },
+  { id: '3', name: 'YouTube',    icon: '▶️', color: '#FFE8E8', limit: 45,  used: 41, blocked: false, packageName: 'com.google.android.youtube' },
+  { id: '4', name: 'Twitter/X',  icon: '🐦', color: '#E8F8FF', limit: 30,  used: 13, blocked: true,  packageName: 'com.twitter.android' },
+  { id: '5', name: 'TikTok',     icon: '🎵', color: '#F0E8FF', limit: 30,  used: 8,  blocked: true,  packageName: 'com.zhiliaoapp.musically' },
+  { id: '6', name: 'Reddit',     icon: '🤖', color: '#FFE8E0', limit: 20,  used: 5,  blocked: false, packageName: 'com.reddit.frontpage' },
 ];
 
 export const SESSION_TYPES = [

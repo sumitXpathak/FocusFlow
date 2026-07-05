@@ -28,7 +28,7 @@ export default function StreakBanner({ streak }) {
           const isToday = i === todayIdx;
           
           return (
-            <View key={i} style={styles.dayCol}>
+            <View key={i} testID="streak-day-col" style={styles.dayCol}>
               <View style={[
                 styles.dot, 
                 isDone && styles.done, 

@@ -6,6 +6,7 @@ import {
 } from 'react-native';
 import { COLORS, SIZES, SHADOWS } from '../constants/theme';
 import { useAuth } from '../context/AuthContext';
+import { resetPassword } from '../services/authService';
 import { Ionicons } from '@expo/vector-icons';
 
 export default function LoginScreen({ navigation }) {
@@ -34,6 +35,19 @@ export default function LoginScreen({ navigation }) {
   function handleSkip() {
     markOnboardingComplete();
     navigation.replace('Main');
+  }
+
+  async function handleForgotPassword() {
+    if (!email) {
+      Alert.alert('Enter your email', 'Type your email address above, then tap "Forgot password?" to receive a reset link.');
+      return;
+    }
+    try {
+      await resetPassword(email);
+      Alert.alert('Check your inbox', `We've sent a password reset link to ${email}.`);
+    } catch (e) {
+      Alert.alert('Could not send reset email', e.message);
+    }
   }
 
   return (
@@ -92,7 +106,7 @@ export default function LoginScreen({ navigation }) {
               </View>
             </View>
 
-            <TouchableOpacity onPress={() => navigation?.navigate('ForgotPassword')} style={styles.forgotBtn}>
+            <TouchableOpacity onPress={handleForgotPassword} style={styles.forgotBtn}>
               <Text style={styles.forgotTxt}>Forgot password?</Text>
             </TouchableOpacity>
 

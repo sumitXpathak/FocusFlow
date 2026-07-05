@@ -182,11 +182,16 @@ export function AppProvider({ children }) {
       const saved = await AsyncStorage.getItem('focusflow_state');
       if (saved) {
         const parsed = JSON.parse(saved);
-        dispatch({ type: 'LOAD_STATE', payload: parsed });
+        dispatch({ type: 'LOAD_STATE', payload: { ...parsed, profileLoaded: true } });
+        return;
       }
     } catch (e) {
       console.log('No saved state found');
     }
+    // Mark as loaded even when there was nothing to load, otherwise the
+    // persistence effect below early-returns forever and guest/offline
+    // state is never written to disk.
+    dispatch({ type: 'LOAD_STATE', payload: { profileLoaded: true } });
   }
 
   // ── Persist to AsyncStorage (always, as offline cache) ──
@@ -205,7 +210,7 @@ export function AppProvider({ children }) {
       focusSessionsToday: state.focusSessionsToday,
       pointsToday: state.pointsToday,
     }));
-  }, [state.points, state.streak, state.apps, state.blockingEnabled, state.focusSessionsToday]);
+  }, [state.profileLoaded, state.points, state.streak, state.apps, state.blockingEnabled, state.focusSessionsToday]);
 
   // ── Debounced sync to Firestore ──────────────
   const syncToFirestore = useCallback(() => {

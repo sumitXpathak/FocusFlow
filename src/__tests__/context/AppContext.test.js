@@ -17,12 +17,13 @@ describe('AppContext', () => {
   describe('Initial State', () => {
     it('loads with correct default points', () => {
       const { result } = renderHook(() => useApp(), { wrapper });
-      expect(result.current.points).toBe(1240);
+      // New users start clean; real point totals load from Firestore/AsyncStorage.
+      expect(result.current.points).toBe(0);
     });
 
     it('loads with correct default streak', () => {
       const { result } = renderHook(() => useApp(), { wrapper });
-      expect(result.current.streak).toBe(45);
+      expect(result.current.streak).toBe(0);
     });
 
     it('loads with default apps list', () => {
@@ -37,14 +38,14 @@ describe('AppContext', () => {
 
     it('calculates screenTimePercent correctly', () => {
       const { result } = renderHook(() => useApp(), { wrapper });
-      // 72 mins used / 180 mins goal = 40%
-      expect(result.current.screenTimePercent).toBeCloseTo(40, 0);
+      // 0 mins used / 180 mins goal = 0% before any usage is recorded
+      expect(result.current.screenTimePercent).toBeCloseTo(0, 0);
     });
 
     it('calculates remainingMinutes correctly', () => {
       const { result } = renderHook(() => useApp(), { wrapper });
-      // 180 - 72 = 108 mins remaining
-      expect(result.current.remainingMinutes).toBe(108);
+      // 180 min goal - 0 used = full 180 mins remaining
+      expect(result.current.remainingMinutes).toBe(180);
     });
   });
 
@@ -55,7 +56,7 @@ describe('AppContext', () => {
       act(() => {
         result.current.dispatch({ type: 'ADD_POINTS', payload: 50 });
       });
-      expect(result.current.points).toBe(1290);
+      expect(result.current.points).toBe(50);
     });
 
     it('adds points to pointsToday', () => {
@@ -90,7 +91,7 @@ describe('AppContext', () => {
       act(() => {
         result.current.dispatch({ type: 'ADD_POINTS', payload: 10000 });
       });
-      expect(result.current.points).toBe(11240);
+      expect(result.current.points).toBe(10000);
     });
   });
 
@@ -121,7 +122,7 @@ describe('AppContext', () => {
         result.current.dispatch({ type: 'COMPLETE_SESSION', payload: 15 });
         result.current.dispatch({ type: 'COMPLETE_SESSION', payload: 15 });
       });
-      expect(result.current.focusSessionsToday).toBe(6); // 3 default + 3 new
+      expect(result.current.focusSessionsToday).toBe(3); // starts at 0, +3 sessions
     });
   });
 
@@ -202,6 +203,10 @@ describe('AppContext', () => {
   describe('AsyncStorage persistence', () => {
     it('saves state to AsyncStorage when points change', async () => {
       const { result } = renderHook(() => useApp(), { wrapper });
+      // Let the initial async load settle so profileLoaded flips true.
+      await act(async () => {
+        await Promise.resolve();
+      });
       act(() => {
         result.current.dispatch({ type: 'ADD_POINTS', payload: 100 });
       });
@@ -210,7 +215,7 @@ describe('AppContext', () => {
       });
       expect(AsyncStorage.setItem).toHaveBeenCalledWith(
         'focusflow_state',
-        expect.stringContaining('"points":1340')
+        expect.stringContaining('"points":100')
       );
     });
 

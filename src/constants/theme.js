@@ -3,6 +3,7 @@ export const COLORS = {
   white: '#FFFFFF',
   black: '#1A1A1A',
   orange: '#FF6B35',
+  primary: '#FF6B35',
   orangeLight: '#FFF0EA',
   green: '#22C55E',
   greenLight: '#E8F8EF',
@@ -44,5 +45,12 @@ export const SHADOWS = {
     shadowOpacity: 0.06,
     shadowRadius: 8,
     elevation: 3,
+  },
+  small: {
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
   },
 };

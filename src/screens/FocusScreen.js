@@ -45,8 +45,10 @@ export default function FocusScreen() {
           return;
         }
 
-        // Start native blocking
-        const blockedPackages = apps.filter(a => a.blocked).map(a => a.id);
+        // Start native blocking — must pass real Android package names
+        const blockedPackages = apps
+          .filter(a => a.blocked)
+          .map(a => a.packageName || a.id);
         ExpoAppBlockerModule.startBlocking(blockedPackages);
       }
     }
