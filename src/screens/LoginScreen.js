@@ -1,13 +1,33 @@
 import React, { useState } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity,
-  StyleSheet, SafeAreaView, KeyboardAvoidingView,
+  StyleSheet, KeyboardAvoidingView,
   Platform, ActivityIndicator, Alert, ScrollView
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { COLORS, SIZES, SHADOWS } from '../constants/theme';
 import { useAuth } from '../context/AuthContext';
 import { resetPassword } from '../services/authService';
 import { Ionicons } from '@expo/vector-icons';
+
+function isValidEmail(email) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+}
+
+// Turn Firebase's error codes into messages a user can act on.
+function friendlyAuthError(e) {
+  switch (e?.code) {
+    case 'auth/invalid-email':        return 'That email address looks invalid. Please check and try again.';
+    case 'auth/user-not-found':       return 'No account found with that email. Try signing up instead.';
+    case 'auth/wrong-password':
+    case 'auth/invalid-credential':   return 'Incorrect email or password. Please try again.';
+    case 'auth/too-many-requests':    return 'Too many attempts. Please wait a moment and try again.';
+    case 'auth/network-request-failed': return 'Network error. Check your connection and try again.';
+    case 'auth/configuration-not-found':
+      return 'Email/Password sign-in is not enabled for this app. Enable it in the Firebase Console → Authentication → Sign-in method.';
+    default:                          return e?.message || 'Something went wrong. Please try again.';
+  }
+}
 
 export default function LoginScreen({ navigation }) {
   const { login, markOnboardingComplete } = useAuth();
@@ -25,8 +45,12 @@ export default function LoginScreen({ navigation }) {
     try {
       await login(email, password);
       markOnboardingComplete();
+      // Auth succeeded — move into the app. Without this the navigator stays
+      // on the Login screen (initialRouteName is only read once at mount), so
+      // a successful sign-in would appear to do nothing.
+      navigation.reset({ index: 0, routes: [{ name: 'Main' }] });
     } catch (e) {
-      Alert.alert('Login failed', e.message);
+      Alert.alert('Login failed', friendlyAuthError(e));
     } finally {
       setLoading(false);
     }
@@ -38,15 +62,20 @@ export default function LoginScreen({ navigation }) {
   }
 
   async function handleForgotPassword() {
-    if (!email) {
+    const trimmed = email.trim();
+    if (!trimmed) {
       Alert.alert('Enter your email', 'Type your email address above, then tap "Forgot password?" to receive a reset link.');
       return;
     }
+    if (!isValidEmail(trimmed)) {
+      Alert.alert('Invalid email', 'Please enter a valid email address before requesting a reset link.');
+      return;
+    }
     try {
-      await resetPassword(email);
-      Alert.alert('Check your inbox', `We've sent a password reset link to ${email}.`);
+      await resetPassword(trimmed);
+      Alert.alert('Check your inbox', `We've sent a password reset link to ${trimmed}. It may take a minute to arrive — remember to check your spam folder.`);
     } catch (e) {
-      Alert.alert('Could not send reset email', e.message);
+      Alert.alert('Could not send reset email', friendlyAuthError(e));
     }
   }
 

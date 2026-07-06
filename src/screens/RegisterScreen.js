@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity,
-  StyleSheet, SafeAreaView, KeyboardAvoidingView,
+  StyleSheet, KeyboardAvoidingView,
   Platform, ActivityIndicator, Alert, ScrollView,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { COLORS, SIZES, SHADOWS } from '../constants/theme';
 import { useAuth } from '../context/AuthContext';
 import { Ionicons } from '@expo/vector-icons';
@@ -67,6 +68,9 @@ export default function RegisterScreen({ navigation }) {
     try {
       await register(email, password, name, selectedGoal);
       markOnboardingComplete();
+      // Account created — move into the app. Without this the navigator stays
+      // on the Register screen and a successful sign-up appears to do nothing.
+      navigation.reset({ index: 0, routes: [{ name: 'Main' }] });
     } catch (e) {
       if (e.code === 'auth/configuration-not-found') {
         Alert.alert('Firebase Error', 'Email/Password authentication is not enabled in your Firebase Console. Please enable it in Authentication -> Sign-in method.');
