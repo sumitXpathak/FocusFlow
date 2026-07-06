@@ -25,7 +25,7 @@ class ExpoAppBlockerModule : Module() {
     }
 
     Function("stopBlocking") {
-      val context = appContext.reactContext ?: return@Function
+      val context = appContext.reactContext ?: return@Function null
       val intent = Intent(context, BlockingService::class.java)
       context.stopService(intent)
     }
@@ -51,14 +51,14 @@ class ExpoAppBlockerModule : Module() {
     }
 
     Function("requestUsagePermission") {
-      val context = appContext.reactContext ?: return@Function
+      val context = appContext.reactContext ?: return@Function null
       val intent = Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS)
       intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
       context.startActivity(intent)
     }
 
     Function("requestOverlayPermission") {
-      val context = appContext.reactContext ?: return@Function
+      val context = appContext.reactContext ?: return@Function null
       if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
         val intent = Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:" + context.packageName))
         intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK

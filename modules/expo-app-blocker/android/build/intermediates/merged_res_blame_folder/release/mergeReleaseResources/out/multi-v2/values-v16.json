@@ -1,0 +1,34 @@
+{
+    "logs": [
+        {
+            "outputFile": "expo.modules.appblocker.expo-app-blocker-mergeReleaseResources-5:/values-v16/values-v16.xml",
+            "map": [
+                {
+                    "source": "C:\\Users\\Sumit\\.gradle\\caches\\8.14.3\\transforms\\9045ec4b42a973ad15ca52c220e7e5d9\\transformed\\core-1.12.0\\res\\values-v16\\values-v16.xml",
+                    "from": {
+                        "startLines": "2",
+                        "startColumns": "4",
+                        "startOffsets": "55",
+                        "endColumns": "65",
+                        "endOffsets": "116"
+                    }
+                }
+            ]
+        },
+        {
+            "outputFile": "expo.modules.appblocker.expo-app-blocker-release-7:/values-v16/values-v16.xml",
+            "map": [
+                {
+                    "source": "C:\\Users\\Sumit\\.gradle\\caches\\8.14.3\\transforms\\9045ec4b42a973ad15ca52c220e7e5d9\\transformed\\core-1.12.0\\res\\values-v16\\values-v16.xml",
+                    "from": {
+                        "startLines": "2",
+                        "startColumns": "4",
+                        "startOffsets": "55",
+                        "endColumns": "65",
+                        "endOffsets": "116"
+                    }
+                }
+            ]
+        }
+    ]
+}

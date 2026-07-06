@@ -1,0 +1,48 @@
+1<?xml version="1.0" encoding="utf-8"?>
+2<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+3    xmlns:tools="http://schemas.android.com/tools"
+4    package="expo.modules.appblocker" >
+5
+6    <uses-sdk android:minSdkVersion="24" />
+7
+8    <uses-permission
+8-->D:\FocusFlow-oo\FocusFlow\modules\expo-app-blocker\android\src\main\AndroidManifest.xml:5:5-6:47
+9        android:name="android.permission.PACKAGE_USAGE_STATS"
+9-->D:\FocusFlow-oo\FocusFlow\modules\expo-app-blocker\android\src\main\AndroidManifest.xml:5:22-75
+10        tools:ignore="ProtectedPermissions" />
+10-->D:\FocusFlow-oo\FocusFlow\modules\expo-app-blocker\android\src\main\AndroidManifest.xml:6:9-44
+11    <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
+11-->D:\FocusFlow-oo\FocusFlow\modules\expo-app-blocker\android\src\main\AndroidManifest.xml:7:5-78
+11-->D:\FocusFlow-oo\FocusFlow\modules\expo-app-blocker\android\src\main\AndroidManifest.xml:7:22-75
+12    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+12-->D:\FocusFlow-oo\FocusFlow\modules\expo-app-blocker\android\src\main\AndroidManifest.xml:8:5-77
+12-->D:\FocusFlow-oo\FocusFlow\modules\expo-app-blocker\android\src\main\AndroidManifest.xml:8:22-74
+13    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
+13-->D:\FocusFlow-oo\FocusFlow\modules\expo-app-blocker\android\src\main\AndroidManifest.xml:9:5-89
+13-->D:\FocusFlow-oo\FocusFlow\modules\expo-app-blocker\android\src\main\AndroidManifest.xml:9:22-86
+14    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+14-->D:\FocusFlow-oo\FocusFlow\modules\expo-app-blocker\android\src\main\AndroidManifest.xml:10:5-77
+14-->D:\FocusFlow-oo\FocusFlow\modules\expo-app-blocker\android\src\main\AndroidManifest.xml:10:22-74
+15
+16    <application>
+16-->D:\FocusFlow-oo\FocusFlow\modules\expo-app-blocker\android\src\main\AndroidManifest.xml:12:5-22:19
+17        <service
+17-->D:\FocusFlow-oo\FocusFlow\modules\expo-app-blocker\android\src\main\AndroidManifest.xml:13:9-21:19
+18            android:name="expo.modules.appblocker.BlockingService"
+18-->D:\FocusFlow-oo\FocusFlow\modules\expo-app-blocker\android\src\main\AndroidManifest.xml:14:13-67
+19            android:enabled="true"
+19-->D:\FocusFlow-oo\FocusFlow\modules\expo-app-blocker\android\src\main\AndroidManifest.xml:15:13-35
+20            android:exported="false"
+20-->D:\FocusFlow-oo\FocusFlow\modules\expo-app-blocker\android\src\main\AndroidManifest.xml:16:13-37
+21            android:foregroundServiceType="specialUse" >
+21-->D:\FocusFlow-oo\FocusFlow\modules\expo-app-blocker\android\src\main\AndroidManifest.xml:17:13-55
+22            <property
+22-->D:\FocusFlow-oo\FocusFlow\modules\expo-app-blocker\android\src\main\AndroidManifest.xml:18:13-20:104
+23                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+23-->D:\FocusFlow-oo\FocusFlow\modules\expo-app-blocker\android\src\main\AndroidManifest.xml:19:17-76
+24                android:value="Blocks user-selected distracting apps during an active focus session" />
+24-->D:\FocusFlow-oo\FocusFlow\modules\expo-app-blocker\android\src\main\AndroidManifest.xml:20:17-101
+25        </service>
+26    </application>
+27
+28</manifest>

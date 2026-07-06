@@ -1,0 +1,11 @@
+expo.modules.appblocker.expo-app-blocker-core-ktx-1.12.0-0 C:\Users\Sumit\.gradle\caches\8.14.3\transforms\532abeee3223d9004b9c56cb98597c74\transformed\core-ktx-1.12.0\res
+expo.modules.appblocker.expo-app-blocker-annotation-experimental-1.3.0-1 C:\Users\Sumit\.gradle\caches\8.14.3\transforms\6320d91aa777b4b24a99c70c961eee64\transformed\annotation-experimental-1.3.0\res
+expo.modules.appblocker.expo-app-blocker-core-1.12.0-2 C:\Users\Sumit\.gradle\caches\8.14.3\transforms\9045ec4b42a973ad15ca52c220e7e5d9\transformed\core-1.12.0\res
+expo.modules.appblocker.expo-app-blocker-lifecycle-runtime-2.3.1-3 C:\Users\Sumit\.gradle\caches\8.14.3\transforms\af5d8fe85af15ea5f4b7b21b7f5c682b\transformed\lifecycle-runtime-2.3.1\res
+expo.modules.appblocker.expo-app-blocker-pngs-4 D:\FocusFlow-oo\FocusFlow\modules\expo-app-blocker\android\build\generated\res\pngs\release
+expo.modules.appblocker.expo-app-blocker-resValues-5 D:\FocusFlow-oo\FocusFlow\modules\expo-app-blocker\android\build\generated\res\resValues\release
+expo.modules.appblocker.expo-app-blocker-mergeReleaseResources-6 D:\FocusFlow-oo\FocusFlow\modules\expo-app-blocker\android\build\intermediates\incremental\release\mergeReleaseResources\merged.dir
+expo.modules.appblocker.expo-app-blocker-mergeReleaseResources-7 D:\FocusFlow-oo\FocusFlow\modules\expo-app-blocker\android\build\intermediates\incremental\release\mergeReleaseResources\stripped.dir
+expo.modules.appblocker.expo-app-blocker-release-8 D:\FocusFlow-oo\FocusFlow\modules\expo-app-blocker\android\build\intermediates\merged_res\release\mergeReleaseResources
+expo.modules.appblocker.expo-app-blocker-main-9 D:\FocusFlow-oo\FocusFlow\modules\expo-app-blocker\android\src\main\res
+expo.modules.appblocker.expo-app-blocker-release-10 D:\FocusFlow-oo\FocusFlow\modules\expo-app-blocker\android\src\release\res
