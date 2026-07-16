@@ -75,8 +75,10 @@ export default function AppLimitScreen({ navigation }) {
           return (
             <View key={app.id} style={styles.appCard}>
               <View style={styles.appHeader}>
-                <View style={[styles.appIcon, { backgroundColor: app.color }]}>
-                  <Text style={{ fontSize: 22 }}>{app.icon}</Text>
+                <View style={[styles.appIcon, { backgroundColor: app.color || '#E8F0FE' }]}>
+                  <Text style={{ fontSize: app.icon ? 22 : 16, fontWeight: '700', color: COLORS.orange }}>
+                    {app.icon || app.name?.charAt(0)?.toUpperCase() || '?'}
+                  </Text>
                 </View>
                 <View style={{ flex: 1 }}>
                   <Text style={styles.appName}>{app.name}</Text>

@@ -2,7 +2,6 @@ import React from 'react';
 import { renderHook, act, waitFor } from '@testing-library/react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { AppProvider, useApp } from '../../context/AppContext';
-import { DEFAULT_APPS } from '../../constants/data';
 
 const wrapper = ({ children }) => <AppProvider>{children}</AppProvider>;
 
@@ -26,14 +25,25 @@ describe('AppContext', () => {
       expect(result.current.streak).toBe(0);
     });
 
-    it('loads with default apps list', () => {
+    it('loads with empty apps list before native discovery', () => {
       const { result } = renderHook(() => useApp(), { wrapper });
-      expect(result.current.apps).toHaveLength(DEFAULT_APPS.length);
+      // Apps start empty — filled after native getInstalledApps() call
+      expect(result.current.apps).toHaveLength(0);
     });
 
     it('loads with blocking enabled by default', () => {
       const { result } = renderHook(() => useApp(), { wrapper });
       expect(result.current.blockingEnabled).toBe(true);
+    });
+
+    it('loads with focusActive as false', () => {
+      const { result } = renderHook(() => useApp(), { wrapper });
+      expect(result.current.focusActive).toBe(false);
+    });
+
+    it('loads with empty schedules', () => {
+      const { result } = renderHook(() => useApp(), { wrapper });
+      expect(result.current.schedules).toHaveLength(0);
     });
 
     it('calculates screenTimePercent correctly', () => {
@@ -147,55 +157,38 @@ describe('AppContext', () => {
     });
   });
 
-  // ─── TOGGLE_APP_BLOCK ────────────────────────────────────────────
-  describe('TOGGLE_APP_BLOCK action', () => {
-    it('toggles a specific app blocked state', () => {
+  // ─── SET_FOCUS_ACTIVE ────────────────────────────────────────────
+  describe('SET_FOCUS_ACTIVE action', () => {
+    it('sets focusActive to true', () => {
       const { result } = renderHook(() => useApp(), { wrapper });
-      const app = result.current.apps[0]; // Facebook - blocked: false
-      const wasBlocked = app.blocked;
       act(() => {
-        result.current.dispatch({ type: 'TOGGLE_APP_BLOCK', payload: app.id });
+        result.current.dispatch({ type: 'SET_FOCUS_ACTIVE', payload: true });
       });
-      const updated = result.current.apps.find(a => a.id === app.id);
-      expect(updated.blocked).toBe(!wasBlocked);
+      expect(result.current.focusActive).toBe(true);
     });
 
-    it('does not affect other apps when toggling one', () => {
+    it('sets focusActive back to false', () => {
       const { result } = renderHook(() => useApp(), { wrapper });
-      const otherApps = result.current.apps.slice(1);
-      const otherStates = otherApps.map(a => ({ id: a.id, blocked: a.blocked }));
       act(() => {
-        result.current.dispatch({ type: 'TOGGLE_APP_BLOCK', payload: result.current.apps[0].id });
+        result.current.dispatch({ type: 'SET_FOCUS_ACTIVE', payload: true });
+        result.current.dispatch({ type: 'SET_FOCUS_ACTIVE', payload: false });
       });
-      otherStates.forEach(({ id, blocked }) => {
-        const app = result.current.apps.find(a => a.id === id);
-        expect(app.blocked).toBe(blocked);
-      });
+      expect(result.current.focusActive).toBe(false);
     });
   });
 
-  // ─── SET_APP_LIMIT ───────────────────────────────────────────────
-  describe('SET_APP_LIMIT action', () => {
-    it('updates app limit correctly', () => {
+  // ─── SET_SCHEDULES ───────────────────────────────────────────────
+  describe('SET_SCHEDULES action', () => {
+    it('sets schedules array', () => {
       const { result } = renderHook(() => useApp(), { wrapper });
-      const app = result.current.apps[0];
+      const mockSchedules = [
+        { id: '1', name: 'Work', days: [0,1,2,3,4], startMinutes: 540, endMinutes: 1020, packages: ['com.test.app'], active: true },
+      ];
       act(() => {
-        result.current.dispatch({ type: 'SET_APP_LIMIT', payload: { id: app.id, limit: 90 } });
+        result.current.dispatch({ type: 'SET_SCHEDULES', payload: mockSchedules });
       });
-      const updated = result.current.apps.find(a => a.id === app.id);
-      expect(updated.limit).toBe(90);
-    });
-
-    it('does not change other app limits', () => {
-      const { result } = renderHook(() => useApp(), { wrapper });
-      const firstApp = result.current.apps[0];
-      const secondApp = result.current.apps[1];
-      const originalLimit = secondApp.limit;
-      act(() => {
-        result.current.dispatch({ type: 'SET_APP_LIMIT', payload: { id: firstApp.id, limit: 99 } });
-      });
-      const updatedSecond = result.current.apps.find(a => a.id === secondApp.id);
-      expect(updatedSecond.limit).toBe(originalLimit);
+      expect(result.current.schedules).toHaveLength(1);
+      expect(result.current.schedules[0].name).toBe('Work');
     });
   });
 

@@ -1,7 +1,7 @@
 // src/context/AuthContext.js
 // Global auth state — listens to Firebase, loads Firestore profile
 
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { onAuthStateChanged } from 'firebase/auth';
 import { auth } from '../services/firebase';
@@ -10,6 +10,12 @@ import {
   loginUser,
   registerUser as authRegister,
   logoutUser,
+  resetPassword as authResetPassword,
+  sendVerificationEmail as authSendVerification,
+  updateUserDisplayName as authUpdateName,
+  deleteUserAccount as authDeleteAccount,
+  reloadUser as authReloadUser,
+  changeUserPassword as authChangePassword,
 } from '../services/authService';
 
 // Safe defaults so consumers rendered outside <AuthProvider> (e.g. in isolated
@@ -25,6 +31,13 @@ const DEFAULT_AUTH = {
   logout: async () => {},
   refreshProfile: async () => {},
   markOnboardingComplete: () => {},
+  sendVerificationEmail: async () => {},
+  updateDisplayName: async () => {},
+  deleteAccount: async () => {},
+  resetPassword: async () => {},
+  changePassword: async () => {},
+  reloadUser: async () => {},
+  updateDailyGoal: async () => {},
 };
 
 const AuthContext = createContext(DEFAULT_AUTH);
@@ -87,37 +100,85 @@ export function AuthProvider({ children }) {
   }, []);
 
   // ── Actions ─────────────────────────────────
-  async function login(email, password) {
+  const login = useCallback(async (email, password) => {
     const firebaseUser = await loginUser(email, password);
     const profile = await getUserProfile(firebaseUser.uid);
     setUserProfile(profile);
     return firebaseUser;
-  }
+  }, []);
 
-  async function register(email, password, displayName, dailyGoalHours = 3) {
+  const register = useCallback(async (email, password, displayName, dailyGoalHours = 3) => {
     const firebaseUser = await authRegister(email, password, displayName, dailyGoalHours);
     const profile = await getUserProfile(firebaseUser.uid);
     setUserProfile(profile);
     return firebaseUser;
-  }
+  }, []);
 
-  async function logout() {
+  const logout = useCallback(async () => {
     await logoutUser();
     setUser(null);
     setUserProfile(null);
-  }
+  }, []);
 
-  async function refreshProfile() {
+  const refreshProfile = useCallback(async () => {
     if (user) {
       const profile = await getUserProfile(user.uid);
       setUserProfile(profile);
     }
-  }
+  }, [user]);
 
-  function markOnboardingComplete() {
+  const markOnboardingComplete = useCallback(() => {
     AsyncStorage.setItem('focusflow_onboarded', 'true');
     setHasOnboarded(true);
-  }
+  }, []);
+
+  const sendVerificationEmail = useCallback(async () => {
+    await authSendVerification();
+  }, []);
+
+  const updateDisplayName = useCallback(async (newName) => {
+    await authUpdateName(newName);
+    // Refresh profile to reflect changes
+    if (user) {
+      const profile = await getUserProfile(user.uid);
+      setUserProfile(profile);
+    }
+  }, [user]);
+
+  const deleteAccount = useCallback(async (password) => {
+    await authDeleteAccount(password);
+    setUser(null);
+    setUserProfile(null);
+    await AsyncStorage.removeItem('focusflow_onboarded');
+    await AsyncStorage.removeItem('focusflow_state');
+    await AsyncStorage.removeItem('focusflow_app_prefs');
+    await AsyncStorage.removeItem('focusflow_installed_apps');
+    await AsyncStorage.removeItem('focusflow_timer_state');
+  }, []);
+
+  const resetPassword = useCallback(async (email) => {
+    await authResetPassword(email);
+  }, []);
+
+  const changePassword = useCallback(async (currentPassword, newPassword) => {
+    await authChangePassword(currentPassword, newPassword);
+  }, []);
+
+  const reloadUser = useCallback(async () => {
+    const refreshedUser = await authReloadUser();
+    if (refreshedUser) {
+      setUser(refreshedUser);
+    }
+  }, []);
+
+  const updateDailyGoal = useCallback(async (hours) => {
+    if (user) {
+      const { updateUserProfile } = require('../services/firestoreService');
+      await updateUserProfile(user.uid, { dailyGoalHours: hours });
+      const profile = await getUserProfile(user.uid);
+      setUserProfile(profile);
+    }
+  }, [user]);
 
   const isAuthenticated = !!user;
 
@@ -133,6 +194,13 @@ export function AuthProvider({ children }) {
       logout,
       refreshProfile,
       markOnboardingComplete,
+      sendVerificationEmail,
+      updateDisplayName,
+      deleteAccount,
+      resetPassword,
+      changePassword,
+      reloadUser,
+      updateDailyGoal,
     }}>
       {children}
     </AuthContext.Provider>

@@ -6,18 +6,21 @@ import { Ionicons }                 from '@expo/vector-icons';
 import { COLORS }                   from '../constants/theme';
 import { useAuth }                  from '../context/AuthContext';
 
-import HomeScreen          from '../screens/HomeScreen';
-import FocusScreen         from '../screens/FocusScreen';
-import RewardsScreen       from '../screens/RewardsScreen';
-import InsightsScreen      from '../screens/InsightsScreen';
-import SettingsScreen      from '../screens/SettingsScreen';
-import OnboardingScreen    from '../screens/OnboardingScreen';
-import LoginScreen         from '../screens/LoginScreen';
-import RegisterScreen      from '../screens/RegisterScreen';
-import NotificationsScreen from '../screens/NotificationsScreen';
-import AppLimitScreen             from '../screens/AppLimitScreen';
-import BlockingSchedulesScreen    from '../screens/BlockingSchedulesScreen';
-import LoadingScreen              from '../screens/LoadingScreen';
+import HomeScreen               from '../screens/HomeScreen';
+import FocusScreen              from '../screens/FocusScreen';
+import RewardsScreen            from '../screens/RewardsScreen';
+import InsightsScreen           from '../screens/InsightsScreen';
+import SettingsScreen           from '../screens/SettingsScreen';
+import OnboardingScreen         from '../screens/OnboardingScreen';
+import LoginScreen              from '../screens/LoginScreen';
+import RegisterScreen           from '../screens/RegisterScreen';
+import ForgotPasswordScreen     from '../screens/ForgotPasswordScreen';
+import NotificationsScreen      from '../screens/NotificationsScreen';
+import AppLimitScreen           from '../screens/AppLimitScreen';
+import BlockingSchedulesScreen  from '../screens/BlockingSchedulesScreen';
+import ProfileEditScreen        from '../screens/ProfileEditScreen';
+import LeaderboardScreen        from '../screens/LeaderboardScreen';
+import LoadingScreen            from '../screens/LoadingScreen';
 
 const Tab   = createBottomTabNavigator();
 const Stack = createStackNavigator();
@@ -82,13 +85,16 @@ export default function AppNavigator() {
         initialRouteName={initialRoute}
         screenOptions={{ headerShown: false, gestureEnabled: true }}
       >
-        <Stack.Screen name="Onboarding"    component={OnboardingScreen}    />
-        <Stack.Screen name="Login"         component={LoginScreen}         />
-        <Stack.Screen name="Register"      component={RegisterScreen}      />
-        <Stack.Screen name="Main"          component={MainTabs}            />
-        <Stack.Screen name="Notifications"       component={NotificationsScreen}    />
-        <Stack.Screen name="AppLimits"           component={AppLimitScreen}         />
-        <Stack.Screen name="BlockingSchedules"   component={BlockingSchedulesScreen}/>
+        <Stack.Screen name="Onboarding"         component={OnboardingScreen}        />
+        <Stack.Screen name="Login"              component={LoginScreen}             />
+        <Stack.Screen name="Register"           component={RegisterScreen}          />
+        <Stack.Screen name="ForgotPassword"     component={ForgotPasswordScreen}    />
+        <Stack.Screen name="Main"               component={MainTabs}                />
+        <Stack.Screen name="Notifications"      component={NotificationsScreen}     />
+        <Stack.Screen name="AppLimits"          component={AppLimitScreen}          />
+        <Stack.Screen name="BlockingSchedules"  component={BlockingSchedulesScreen} />
+        <Stack.Screen name="ProfileEdit"        component={ProfileEditScreen}       />
+        <Stack.Screen name="Leaderboard"        component={LeaderboardScreen}       />
       </Stack.Navigator>
     </NavigationContainer>
   );

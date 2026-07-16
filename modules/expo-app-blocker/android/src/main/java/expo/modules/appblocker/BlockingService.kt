@@ -15,48 +15,70 @@ import android.os.Handler
 import android.os.IBinder
 import android.os.Looper
 import android.view.Gravity
-import android.view.LayoutInflater
 import android.view.View
 import android.view.WindowManager
 import android.widget.Button
 import android.widget.TextView
 import androidx.core.app.NotificationCompat
+import org.json.JSONObject
+import java.util.Calendar
 
 class BlockingService : Service() {
     private var isRunning = false
     private val handler = Handler(Looper.getMainLooper())
     private lateinit var windowManager: WindowManager
     private var overlayView: View? = null
-    private var blockedPackages = listOf<String>()
     private var lastForegroundPackage: String? = null
+
+    // ── Enforcement config (source of truth, persisted to SharedPreferences) ──
+    private var masterEnabled = true
+    private var focusActive = false
+    private var focusPackages = setOf<String>()
+    private var limits = mapOf<String, Int>()            // packageName → daily minutes
+    private var schedules = listOf<ScheduleRule>()
+
+    // Throttled over-limit computation (usage is expensive; recompute every ~5s)
+    private var overLimitSet = setOf<String>()
+    private var lastUsageComputeAt = 0L
+
+    data class ScheduleRule(
+        val active: Boolean,
+        val days: Set<Int>,          // 0 = Mon … 6 = Sun
+        val startMinutes: Int,
+        val endMinutes: Int,
+        val packages: Set<String>,
+    )
 
     companion object {
         var activeBlockedPackages: List<String> = emptyList()
+
+        const val PREFS_NAME = "focusflow_enforcement"
+        const val KEY_CONFIG = "config_json"
+        const val EXTRA_CONFIG = "ENFORCEMENT_CONFIG"
+
+        private const val USAGE_RECOMPUTE_MS = 5000L
+        private const val TICK_MS = 800L
     }
 
     override fun onCreate() {
         super.onCreate()
         windowManager = getSystemService(WINDOW_SERVICE) as WindowManager
         createNotificationChannel()
+        // Restore config on cold restart (START_STICKY re-delivers a null intent).
+        loadConfigFromPrefs()
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        val packages = intent?.getStringArrayExtra("BLOCKED_PACKAGES")
-        if (packages != null) {
-            blockedPackages = packages.toList()
-            activeBlockedPackages = blockedPackages
-        }
+        // Fresh config from JS, if this start carried one. On a sticky restart
+        // the intent is null and we keep whatever onCreate loaded from prefs.
+        val json = intent?.getStringExtra(EXTRA_CONFIG)
+        if (json != null) parseConfig(json)
 
-        val notification = NotificationCompat.Builder(this, "FocusFlowChannel")
-            .setContentTitle("FocusFlow is active")
-            .setContentText("App blocking is enabled.")
-            .setSmallIcon(android.R.drawable.ic_lock_idle_lock)
-            .build()
-
-        startForeground(1, notification)
+        startForeground(1, buildNotification())
 
         if (!isRunning) {
             isRunning = true
+            lastUsageComputeAt = 0L
             handler.post(checkForegroundAppRunnable)
         }
 
@@ -72,26 +94,157 @@ class BlockingService : Service() {
 
     override fun onBind(intent: Intent?): IBinder? = null
 
+    // ── Config parsing / persistence ─────────────────────────
+    private fun loadConfigFromPrefs() {
+        val prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        val json = prefs.getString(KEY_CONFIG, null) ?: return
+        parseConfig(json)
+    }
+
+    private fun parseConfig(json: String) {
+        try {
+            val root = JSONObject(json)
+            masterEnabled = root.optBoolean("masterEnabled", true)
+            focusActive = root.optBoolean("focusActive", false)
+
+            focusPackages = root.optJSONArray("focusPackages").toStringSet()
+
+            val limitMap = HashMap<String, Int>()
+            root.optJSONArray("limits")?.let { arr ->
+                for (i in 0 until arr.length()) {
+                    val o = arr.optJSONObject(i) ?: continue
+                    val pkg = o.optString("packageName", "")
+                    if (pkg.isEmpty()) continue
+                    limitMap[pkg] = o.optInt("dailyLimitMinutes", Int.MAX_VALUE)
+                }
+            }
+            limits = limitMap
+
+            val rules = ArrayList<ScheduleRule>()
+            root.optJSONArray("schedules")?.let { arr ->
+                for (i in 0 until arr.length()) {
+                    val o = arr.optJSONObject(i) ?: continue
+                    val days = HashSet<Int>()
+                    o.optJSONArray("days")?.let { d ->
+                        for (j in 0 until d.length()) days.add(d.optInt(j))
+                    }
+                    rules.add(
+                        ScheduleRule(
+                            active = o.optBoolean("active", true),
+                            days = days,
+                            startMinutes = o.optInt("startMinutes", 0),
+                            endMinutes = o.optInt("endMinutes", 0),
+                            packages = o.optJSONArray("packages").toStringSet(),
+                        )
+                    )
+                }
+            }
+            schedules = rules
+
+            // Force a fresh over-limit computation on the next tick.
+            lastUsageComputeAt = 0L
+        } catch (_: Exception) {
+            // Malformed config — keep the previous values rather than crash.
+        }
+    }
+
+    private fun org.json.JSONArray?.toStringSet(): Set<String> {
+        if (this == null) return emptySet()
+        val set = HashSet<String>()
+        for (i in 0 until length()) {
+            val s = optString(i, "")
+            if (s.isNotEmpty()) set.add(s)
+        }
+        return set
+    }
+
+    // ── The enforcement tick ─────────────────────────────────
     private val checkForegroundAppRunnable = object : Runnable {
         override fun run() {
             if (!isRunning) return
-            
+
+            val blockNow = computeBlockedSet()
+            activeBlockedPackages = blockNow.toList()
+
             val currentApp = getForegroundApp()
-            if (currentApp != null && currentApp != packageName && blockedPackages.contains(currentApp)) {
+            if (currentApp != null && currentApp != packageName && blockNow.contains(currentApp)) {
                 showOverlay()
             } else {
                 removeOverlay()
             }
 
-            handler.postDelayed(this, 800)
+            handler.postDelayed(this, TICK_MS)
         }
+    }
+
+    private fun computeBlockedSet(): Set<String> {
+        if (!masterEnabled) return emptySet()
+
+        val blocked = HashSet<String>()
+
+        // 1. Focus session apps (only while a focus timer is running).
+        if (focusActive) blocked.addAll(focusPackages)
+
+        // 2. Apps that have crossed their daily limit (throttled recompute).
+        val now = System.currentTimeMillis()
+        if (now - lastUsageComputeAt >= USAGE_RECOMPUTE_MS) {
+            overLimitSet = computeOverLimit(now)
+            lastUsageComputeAt = now
+        }
+        blocked.addAll(overLimitSet)
+
+        // 3. Apps inside an active schedule window.
+        for (rule in schedules) {
+            if (rule.active && isScheduleActiveNow(rule)) blocked.addAll(rule.packages)
+        }
+
+        return blocked
+    }
+
+    private fun computeOverLimit(now: Long): Set<String> {
+        if (limits.isEmpty()) return emptySet()
+        val usage = UsageAggregator.foregroundMillis(this, startOfToday(), now)
+        val over = HashSet<String>()
+        for ((pkg, limitMinutes) in limits) {
+            val usedMinutes = (usage[pkg] ?: 0L) / 60000.0
+            if (usedMinutes >= limitMinutes) over.add(pkg)
+        }
+        return over
+    }
+
+    private fun isScheduleActiveNow(rule: ScheduleRule): Boolean {
+        val cal = Calendar.getInstance()
+        // Calendar: SUNDAY=1 … SATURDAY=7. Map to Mon=0 … Sun=6.
+        val dow = (cal.get(Calendar.DAY_OF_WEEK) + 5) % 7
+        val minutesNow = cal.get(Calendar.HOUR_OF_DAY) * 60 + cal.get(Calendar.MINUTE)
+
+        return if (rule.endMinutes >= rule.startMinutes) {
+            // Same-day window. Day must match the current day.
+            rule.days.contains(dow) &&
+                minutesNow >= rule.startMinutes && minutesNow < rule.endMinutes
+        } else {
+            // Overnight wrap (e.g. 21:00 → 06:00). The morning tail belongs to
+            // the *previous* day's schedule entry.
+            val yesterday = (dow + 6) % 7
+            (rule.days.contains(dow) && minutesNow >= rule.startMinutes) ||
+                (rule.days.contains(yesterday) && minutesNow < rule.endMinutes)
+        }
+    }
+
+    private fun startOfToday(): Long {
+        val cal = Calendar.getInstance()
+        cal.set(Calendar.HOUR_OF_DAY, 0)
+        cal.set(Calendar.MINUTE, 0)
+        cal.set(Calendar.SECOND, 0)
+        cal.set(Calendar.MILLISECOND, 0)
+        return cal.timeInMillis
     }
 
     private fun getForegroundApp(): String? {
         val usageStatsManager = getSystemService(Context.USAGE_STATS_SERVICE) as UsageStatsManager
         val now = System.currentTimeMillis()
-        // Query recent usage events — unlike queryUsageStats(), this reflects
-        // foreground changes within ~1s, which is required for real-time blocking.
+        // queryEvents reflects foreground changes within ~1s — required for
+        // real-time blocking (queryUsageStats lags by minutes).
         val events = usageStatsManager.queryEvents(now - 1000 * 10, now)
         val event = UsageEvents.Event()
         var latestPackage: String? = null
@@ -129,7 +282,7 @@ class BlockingService : Service() {
         )
         params.gravity = Gravity.CENTER
 
-        // We dynamically create a simple full screen view instead of inflating from XML to avoid missing resource issues.
+        // Built in code rather than inflated from XML to avoid missing-resource issues.
         val context = this
         overlayView = android.widget.LinearLayout(context).apply {
             orientation = android.widget.LinearLayout.VERTICAL
@@ -150,7 +303,7 @@ class BlockingService : Service() {
                 setTextColor(Color.WHITE)
                 gravity = Gravity.CENTER
             }
-            
+
             val btn = Button(context).apply {
                 text = "Go Home"
                 setOnClickListener {
@@ -177,6 +330,14 @@ class BlockingService : Service() {
             // View may already be detached — ignore.
         }
         overlayView = null
+    }
+
+    private fun buildNotification(): Notification {
+        return NotificationCompat.Builder(this, "FocusFlowChannel")
+            .setContentTitle("FocusFlow is active")
+            .setContentText("App blocking is enabled.")
+            .setSmallIcon(android.R.drawable.ic_lock_idle_lock)
+            .build()
     }
 
     private fun createNotificationChannel() {

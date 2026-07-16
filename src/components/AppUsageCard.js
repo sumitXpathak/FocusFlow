@@ -12,8 +12,10 @@ export default function AppUsageCard({ app }) {
 
   return (
     <View style={styles.card}>
-      <View style={[styles.icon, { backgroundColor: app.color }]}>
-        <Text style={styles.iconEmoji}>{app.icon}</Text>
+      <View style={[styles.icon, { backgroundColor: app.color || '#E8F0FE' }]}>
+        <Text style={styles.iconEmoji}>
+          {app.icon || app.name?.charAt(0)?.toUpperCase() || '?'}
+        </Text>
       </View>
       <View style={styles.body}>
         <View style={styles.nameRow}>

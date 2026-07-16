@@ -12,98 +12,74 @@ import {
   saveBlockingSchedules,
   getBlockingSchedules,
 } from '../services/firestoreService';
-
-const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-const DAY_FULL = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
-
-const DEFAULT_SCHEDULES = [
-  {
-    id: '1',
-    name: 'Work Hours',
-    emoji: '💼',
-    days: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'],
-    startTime: '09:00',
-    endTime: '17:00',
-    apps: ['Facebook', 'Instagram', 'TikTok', 'Twitter/X'],
-    active: true,
-    color: COLORS.orange,
-  },
-  {
-    id: '2',
-    name: 'Morning Focus',
-    emoji: '🌅',
-    days: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
-    startTime: '06:00',
-    endTime: '09:00',
-    apps: ['YouTube', 'TikTok'],
-    active: true,
-    color: '#22C55E',
-  },
-  {
-    id: '3',
-    name: 'Bedtime',
-    emoji: '🌙',
-    days: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
-    startTime: '21:00',
-    endTime: '23:59',
-    apps: ['Facebook', 'Instagram', 'YouTube', 'TikTok', 'Twitter/X', 'Reddit'],
-    active: false,
-    color: '#8B5CF6',
-  },
-];
+import {
+  DAY_LABELS,
+  dayIndexToLabel,
+  timeToMinutes,
+  minutesToTime,
+} from '../constants/data';
 
 const HOURS = Array.from({ length: 24 }, (_, i) =>
   `${String(i).padStart(2, '0')}:00`
 );
 
-const PRESET_APPS = ['Facebook', 'Instagram', 'YouTube', 'TikTok', 'Twitter/X', 'Reddit', 'Snapchat', 'WhatsApp'];
-
 export default function BlockingSchedulesScreen({ navigation }) {
   const { user, isAuthenticated } = useAuth();
-  const [schedules, setSchedules] = useState(DEFAULT_SCHEDULES);
+  const { apps, schedules: contextSchedules, dispatch } = useApp();
+
+  // Local schedule state — initialized from context, synced back on save
+  const [schedules, setSchedules] = useState(contextSchedules || []);
   const [showModal, setShowModal] = useState(false);
   const [editingSchedule, setEditingSchedule] = useState(null);
   const [newName, setNewName]         = useState('');
   const [newEmoji, setNewEmoji]       = useState('📵');
-  const [newDays, setNewDays]         = useState([]);
+  const [newDays, setNewDays]         = useState([]);          // numeric: 0=Mon…6=Sun
   const [newStart, setNewStart]       = useState('09:00');
   const [newEnd, setNewEnd]           = useState('17:00');
-  const [newApps, setNewApps]         = useState([]);
-  const [showTimePicker, setShowTimePicker] = useState(null); // 'start' | 'end'
+  const [newPackages, setNewPackages] = useState([]);          // package names
+  const [showTimePicker, setShowTimePicker] = useState(null);  // 'start' | 'end'
+
+  // Sync from context when it changes (Firestore load, etc.)
+  useEffect(() => {
+    if (contextSchedules && contextSchedules.length > 0) {
+      setSchedules(contextSchedules);
+    }
+  }, [contextSchedules]);
 
   // Load schedules from Firestore on mount
   useEffect(() => {
     if (isAuthenticated && user) {
       getBlockingSchedules(user.uid)
         .then(saved => {
-          if (saved && saved.length > 0) setSchedules(saved);
+          if (saved && saved.length > 0) {
+            setSchedules(saved);
+            dispatch({ type: 'SET_SCHEDULES', payload: saved });
+          }
         })
         .catch(e => console.log('Load schedules error:', e.message));
     }
   }, [isAuthenticated, user]);
 
-  // Sync schedules to Firestore
-  function syncSchedules(updatedSchedules) {
+  // Push schedule changes to context + Firestore
+  function commitSchedules(updated) {
+    setSchedules(updated);
+    dispatch({ type: 'SET_SCHEDULES', payload: updated });
     if (isAuthenticated && user) {
-      saveBlockingSchedules(user.uid, updatedSchedules)
+      saveBlockingSchedules(user.uid, updated)
         .catch(e => console.log('Save schedules error:', e.message));
     }
   }
 
   function toggleSchedule(id) {
-    setSchedules(prev => {
-      const updated = prev.map(s => s.id === id ? { ...s, active: !s.active } : s);
-      syncSchedules(updated);
-      return updated;
-    });
+    const updated = schedules.map(s =>
+      s.id === id ? { ...s, active: !s.active } : s
+    );
+    commitSchedules(updated);
   }
 
   function deleteSchedule(id) {
-    setSchedules(prev => {
-      const updated = prev.filter(s => s.id !== id);
-      syncSchedules(updated);
-      return updated;
-    });
+    const updated = schedules.filter(s => s.id !== id);
+    commitSchedules(updated);
   }
 
   function openNewModal() {
@@ -113,7 +89,7 @@ export default function BlockingSchedulesScreen({ navigation }) {
     setNewDays([]);
     setNewStart('09:00');
     setNewEnd('17:00');
-    setNewApps([]);
+    setNewPackages([]);
     setShowModal(true);
   }
 
@@ -121,58 +97,70 @@ export default function BlockingSchedulesScreen({ navigation }) {
     setEditingSchedule(schedule.id);
     setNewName(schedule.name);
     setNewEmoji(schedule.emoji);
-    setNewDays([...schedule.days]);
-    setNewStart(schedule.startTime);
-    setNewEnd(schedule.endTime);
-    setNewApps([...schedule.apps]);
+    setNewDays([...(schedule.days || [])]);
+    setNewStart(minutesToTime(schedule.startMinutes || 0));
+    setNewEnd(minutesToTime(schedule.endMinutes || 0));
+    setNewPackages([...(schedule.packages || [])]);
     setShowModal(true);
   }
 
-  function toggleDay(day) {
+  function toggleDay(dayIndex) {
     setNewDays(prev =>
-      prev.includes(day) ? prev.filter(d => d !== day) : [...prev, day]
+      prev.includes(dayIndex) ? prev.filter(d => d !== dayIndex) : [...prev, dayIndex]
     );
   }
 
-  function toggleApp(app) {
-    setNewApps(prev =>
-      prev.includes(app) ? prev.filter(a => a !== app) : [...prev, app]
+  function togglePackage(packageName) {
+    setNewPackages(prev =>
+      prev.includes(packageName) ? prev.filter(p => p !== packageName) : [...prev, packageName]
     );
   }
 
   function saveSchedule() {
-    if (!newName.trim() || newDays.length === 0 || newApps.length === 0) return;
+    if (!newName.trim() || newDays.length === 0 || newPackages.length === 0) return;
     const colors = [COLORS.orange, '#22C55E', '#8B5CF6', '#EF4444', '#06B6D4'];
+    const scheduleData = {
+      name: newName,
+      emoji: newEmoji,
+      days: newDays,
+      startMinutes: timeToMinutes(newStart),
+      endMinutes: timeToMinutes(newEnd),
+      packages: newPackages,
+    };
+
     let updatedSchedules;
     if (editingSchedule) {
-      updatedSchedules = schedules.map(s => s.id === editingSchedule
-        ? { ...s, name: newName, emoji: newEmoji, days: newDays, startTime: newStart, endTime: newEnd, apps: newApps }
-        : s
+      updatedSchedules = schedules.map(s =>
+        s.id === editingSchedule ? { ...s, ...scheduleData } : s
       );
     } else {
       const newSchedule = {
         id: Date.now().toString(),
-        name: newName,
-        emoji: newEmoji,
-        days: newDays,
-        startTime: newStart,
-        endTime: newEnd,
-        apps: newApps,
+        ...scheduleData,
         active: true,
         color: colors[schedules.length % colors.length],
       };
       updatedSchedules = [...schedules, newSchedule];
     }
-    setSchedules(updatedSchedules);
-    syncSchedules(updatedSchedules);
+    commitSchedules(updatedSchedules);
     setShowModal(false);
   }
 
   function formatDays(days) {
+    if (!days || days.length === 0) return '';
     if (days.length === 7) return 'Every day';
-    if (JSON.stringify(days) === JSON.stringify(['Mon','Tue','Wed','Thu','Fri'])) return 'Weekdays';
-    if (JSON.stringify(days) === JSON.stringify(['Sat','Sun'])) return 'Weekends';
-    return days.join(', ');
+    const sorted = [...days].sort();
+    const weekdays = [0, 1, 2, 3, 4];
+    const weekends = [5, 6];
+    if (JSON.stringify(sorted) === JSON.stringify(weekdays)) return 'Weekdays';
+    if (JSON.stringify(sorted) === JSON.stringify(weekends)) return 'Weekends';
+    return sorted.map(d => dayIndexToLabel(d)).join(', ');
+  }
+
+  /** Look up display name from installed apps list */
+  function getAppName(packageName) {
+    const app = apps.find(a => a.packageName === packageName);
+    return app?.name || packageName.split('.').pop();
   }
 
   const activeCount = schedules.filter(s => s.active).length;
@@ -216,7 +204,7 @@ export default function BlockingSchedulesScreen({ navigation }) {
           <View key={schedule.id} style={styles.scheduleCard}>
             {/* Top Row */}
             <View style={styles.cardTop}>
-              <View style={[styles.scheduleIconWrap, { backgroundColor: schedule.color + '20' }]}>
+              <View style={[styles.scheduleIconWrap, { backgroundColor: (schedule.color || COLORS.orange) + '20' }]}>
                 <Text style={styles.scheduleEmoji}>{schedule.emoji}</Text>
               </View>
               <View style={{ flex: 1 }}>
@@ -225,7 +213,7 @@ export default function BlockingSchedulesScreen({ navigation }) {
               </View>
               {/* Toggle */}
               <TouchableOpacity
-                style={[styles.toggle, schedule.active && styles.toggleOn, { backgroundColor: schedule.active ? schedule.color : '#E5E7EB' }]}
+                style={[styles.toggle, schedule.active && styles.toggleOn, { backgroundColor: schedule.active ? (schedule.color || COLORS.orange) : '#E5E7EB' }]}
                 onPress={() => toggleSchedule(schedule.id)}
               >
                 <View style={[styles.knob, schedule.active && styles.knobOn]} />
@@ -236,31 +224,33 @@ export default function BlockingSchedulesScreen({ navigation }) {
             <View style={styles.timeRow}>
               <View style={styles.timeChip}>
                 <Ionicons name="time-outline" size={13} color={COLORS.gray} />
-                <Text style={styles.timeText}>{schedule.startTime} – {schedule.endTime}</Text>
+                <Text style={styles.timeText}>
+                  {minutesToTime(schedule.startMinutes || 0)} – {minutesToTime(schedule.endMinutes || 0)}
+                </Text>
               </View>
               <View style={styles.appCount}>
                 <Ionicons name="apps-outline" size={13} color={COLORS.gray} />
-                <Text style={styles.timeText}>{schedule.apps.length} apps blocked</Text>
+                <Text style={styles.timeText}>{(schedule.packages || []).length} apps blocked</Text>
               </View>
             </View>
 
             {/* App Pills */}
             <View style={styles.appPills}>
-              {schedule.apps.slice(0, 4).map(app => (
-                <View key={app} style={[styles.appPill, { borderColor: schedule.color + '40', backgroundColor: schedule.color + '10' }]}>
-                  <Text style={[styles.appPillTxt, { color: schedule.color }]}>{app}</Text>
+              {(schedule.packages || []).slice(0, 4).map(pkg => (
+                <View key={pkg} style={[styles.appPill, { borderColor: (schedule.color || COLORS.orange) + '40', backgroundColor: (schedule.color || COLORS.orange) + '10' }]}>
+                  <Text style={[styles.appPillTxt, { color: schedule.color || COLORS.orange }]}>{getAppName(pkg)}</Text>
                 </View>
               ))}
-              {schedule.apps.length > 4 && (
+              {(schedule.packages || []).length > 4 && (
                 <View style={styles.appPill}>
-                  <Text style={styles.appPillTxt}>+{schedule.apps.length - 4} more</Text>
+                  <Text style={styles.appPillTxt}>+{schedule.packages.length - 4} more</Text>
                 </View>
               )}
             </View>
 
             {/* Status bar */}
             {schedule.active && (
-              <View style={[styles.activeBar, { backgroundColor: schedule.color }]}>
+              <View style={[styles.activeBar, { backgroundColor: schedule.color || COLORS.orange }]}>
                 <Ionicons name="shield-checkmark" size={11} color={COLORS.white} />
                 <Text style={styles.activeBarTxt}>Active — blocking during set hours</Text>
               </View>
@@ -320,7 +310,7 @@ export default function BlockingSchedulesScreen({ navigation }) {
               {editingSchedule ? 'Edit Schedule' : 'New Schedule'}
             </Text>
             <TouchableOpacity onPress={saveSchedule}>
-              <Text style={[styles.modalSave, (!newName || newDays.length === 0 || newApps.length === 0) && { opacity: 0.4 }]}>
+              <Text style={[styles.modalSave, (!newName || newDays.length === 0 || newPackages.length === 0) && { opacity: 0.4 }]}>
                 Save
               </Text>
             </TouchableOpacity>
@@ -353,16 +343,16 @@ export default function BlockingSchedulesScreen({ navigation }) {
               ))}
             </View>
 
-            {/* Days */}
+            {/* Days — using numeric indices */}
             <Text style={styles.fieldLabel}>DAYS</Text>
             <View style={styles.daysRow}>
-              {DAYS.map(day => (
+              {DAY_LABELS.map((day, idx) => (
                 <TouchableOpacity
-                  key={day}
-                  style={[styles.dayBtn, newDays.includes(day) && styles.dayBtnActive]}
-                  onPress={() => toggleDay(day)}
+                  key={idx}
+                  style={[styles.dayBtn, newDays.includes(idx) && styles.dayBtnActive]}
+                  onPress={() => toggleDay(idx)}
                 >
-                  <Text style={[styles.dayTxt, newDays.includes(day) && styles.dayTxtActive]}>
+                  <Text style={[styles.dayTxt, newDays.includes(idx) && styles.dayTxtActive]}>
                     {day}
                   </Text>
                 </TouchableOpacity>
@@ -372,9 +362,9 @@ export default function BlockingSchedulesScreen({ navigation }) {
             {/* Quick day selectors */}
             <View style={styles.quickDays}>
               {[
-                { label: 'Every day', days: DAYS },
-                { label: 'Weekdays', days: ['Mon','Tue','Wed','Thu','Fri'] },
-                { label: 'Weekends', days: ['Sat','Sun'] },
+                { label: 'Every day', days: [0,1,2,3,4,5,6] },
+                { label: 'Weekdays', days: [0,1,2,3,4] },
+                { label: 'Weekends', days: [5,6] },
               ].map(preset => (
                 <TouchableOpacity
                   key={preset.label}
@@ -432,26 +422,35 @@ export default function BlockingSchedulesScreen({ navigation }) {
               </View>
             </View>
 
-            {/* Apps */}
+            {/* Apps — real installed apps from device */}
             <Text style={styles.fieldLabel}>APPS TO BLOCK</Text>
-            <View style={styles.appGrid}>
-              {PRESET_APPS.map(app => (
-                <TouchableOpacity
-                  key={app}
-                  style={[styles.appToggle, newApps.includes(app) && styles.appToggleActive]}
-                  onPress={() => toggleApp(app)}
-                >
-                  {newApps.includes(app) && (
-                    <Ionicons name="checkmark-circle" size={14} color={COLORS.orange} style={{ marginRight: 4 }} />
-                  )}
-                  <Text style={[styles.appToggleTxt, newApps.includes(app) && styles.appToggleTxtActive]}>
-                    {app}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </View>
+            {apps.length === 0 ? (
+              <View style={styles.validationNote}>
+                <Ionicons name="information-circle-outline" size={14} color={COLORS.gray} />
+                <Text style={styles.validationTxt}>
+                  No installed apps detected. Grant Usage Access permission to see your apps.
+                </Text>
+              </View>
+            ) : (
+              <View style={styles.appGrid}>
+                {apps.map(app => (
+                  <TouchableOpacity
+                    key={app.packageName}
+                    style={[styles.appToggle, newPackages.includes(app.packageName) && styles.appToggleActive]}
+                    onPress={() => togglePackage(app.packageName)}
+                  >
+                    {newPackages.includes(app.packageName) && (
+                      <Ionicons name="checkmark-circle" size={14} color={COLORS.orange} style={{ marginRight: 4 }} />
+                    )}
+                    <Text style={[styles.appToggleTxt, newPackages.includes(app.packageName) && styles.appToggleTxtActive]}>
+                      {app.name}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            )}
 
-            {newName.trim() === '' || newDays.length === 0 || newApps.length === 0 ? (
+            {newName.trim() === '' || newDays.length === 0 || newPackages.length === 0 ? (
               <View style={styles.validationNote}>
                 <Ionicons name="information-circle-outline" size={14} color={COLORS.gray} />
                 <Text style={styles.validationTxt}>

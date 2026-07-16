@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo, useCallback } from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity,
   StyleSheet,
@@ -26,7 +26,7 @@ function getInitials(name) {
   return parts[0].substring(0, 2).toUpperCase();
 }
 
-export default function HomeScreen() {
+export default function HomeScreen({ navigation }) {
   const {
     screenTimeToday, screenTimePercent, remainingMinutes,
     dailyGoalHours, focusSessionsToday, pointsToday,
@@ -45,6 +45,28 @@ export default function HomeScreen() {
   const remStr = remHrs > 0 ? `${remHrs}h ${remMins}m` : `${remMins}m`;
   const onTrack = screenTimePercent < 90;
 
+  const topApps = useMemo(() => apps.slice(0, 4), [apps]);
+
+  const handleNotifications = useCallback(() => {
+    navigation?.navigate('Notifications');
+  }, [navigation]);
+
+  const handleSeeAllApps = useCallback(() => {
+    navigation?.navigate('AppLimits');
+  }, [navigation]);
+
+  const handleToggleBlocking = useCallback(() => {
+    dispatch({ type: 'TOGGLE_BLOCKING' });
+  }, [dispatch]);
+
+  const handleProfilePress = useCallback(() => {
+    if (isAuthenticated) {
+      navigation?.navigate('ProfileEdit');
+    } else {
+      navigation?.navigate('Login');
+    }
+  }, [navigation, isAuthenticated]);
+
   return (
     <SafeAreaView style={styles.safe}>
       <ScrollView style={styles.scroll} showsVerticalScrollIndicator={false}>
@@ -56,12 +78,12 @@ export default function HomeScreen() {
             <Text style={styles.name}>{displayName}'s Dashboard</Text>
           </View>
           <View style={styles.headerRight}>
-            <TouchableOpacity style={styles.notifBtn}>
+            <TouchableOpacity style={styles.notifBtn} onPress={handleNotifications}>
               <Ionicons name="notifications-outline" size={20} color={COLORS.black} />
             </TouchableOpacity>
-            <View style={styles.avatar}>
+            <TouchableOpacity style={styles.avatar} onPress={handleProfilePress}>
               <Text style={styles.avatarText}>{initials}</Text>
-            </View>
+            </TouchableOpacity>
           </View>
         </View>
 
@@ -103,7 +125,7 @@ export default function HomeScreen() {
             <Text style={styles.goalVal}>{focusSessionsToday}</Text>
             <Text style={styles.goalLabel}>Focus sessions</Text>
             <View style={styles.barTrack}>
-              <View style={[styles.barFill, { width: `${(focusSessionsToday / 5) * 100}%`, backgroundColor: COLORS.green }]} />
+              <View style={[styles.barFill, { width: `${Math.min((focusSessionsToday / 5) * 100, 100)}%`, backgroundColor: COLORS.green }]} />
             </View>
           </View>
           <View style={[styles.goalCard, styles.card]}>
@@ -111,7 +133,7 @@ export default function HomeScreen() {
             <Text style={styles.goalVal}>+{pointsToday}</Text>
             <Text style={styles.goalLabel}>Points earned</Text>
             <View style={styles.barTrack}>
-              <View style={[styles.barFill, { width: `${(pointsToday / 150) * 100}%` }]} />
+              <View style={[styles.barFill, { width: `${Math.min((pointsToday / 150) * 100, 100)}%` }]} />
             </View>
           </View>
         </View>
@@ -119,7 +141,7 @@ export default function HomeScreen() {
         {/* Blocking Banner */}
         <TouchableOpacity
           style={styles.blockBanner}
-          onPress={() => dispatch({ type: 'TOGGLE_BLOCKING' })}
+          onPress={handleToggleBlocking}
           activeOpacity={0.85}
         >
           <View style={styles.blockIcon}>
@@ -139,14 +161,22 @@ export default function HomeScreen() {
         {/* App Usage */}
         <View style={styles.sectionHead}>
           <Text style={styles.sectionTitle}>App usage</Text>
-          <TouchableOpacity>
+          <TouchableOpacity onPress={handleSeeAllApps}>
             <Text style={styles.seeAll}>See all</Text>
           </TouchableOpacity>
         </View>
 
-        {apps.slice(0, 4).map(app => (
+        {topApps.map(app => (
           <AppUsageCard key={app.id} app={app} />
         ))}
+
+        {topApps.length === 0 && (
+          <View style={styles.emptyUsage}>
+            <Text style={styles.emptyUsageText}>
+              No app usage data yet. Grant Usage Access permission to see your apps.
+            </Text>
+          </View>
+        )}
 
         <View style={{ height: 20 }} />
       </ScrollView>
@@ -232,4 +262,9 @@ const styles = StyleSheet.create({
   },
   sectionTitle: { fontSize: 14, fontWeight: '700', color: COLORS.black },
   seeAll: { fontSize: 12, fontWeight: '500', color: COLORS.orange },
+  emptyUsage: {
+    marginHorizontal: SIZES.padding, padding: 20, alignItems: 'center',
+    backgroundColor: COLORS.white, borderRadius: SIZES.radius, ...SHADOWS.card,
+  },
+  emptyUsageText: { fontSize: 13, color: COLORS.gray, textAlign: 'center', lineHeight: 20 },
 });

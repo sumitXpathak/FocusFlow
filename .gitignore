@@ -10,5 +10,12 @@ GoogleService-Info.plist
 # Expo
 .expo/
 
+# Build artifacts and local caches
+dist/
+android/.gradle/
+android/build/
+modules/expo-app-blocker/android/.gradle/
+modules/expo-app-blocker/android/build/
+
 # Temporary files
 replacements.txt

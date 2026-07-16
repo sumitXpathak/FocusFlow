@@ -13,7 +13,7 @@ import { initializeAuth, getAuth, getReactNativePersistence } from 'firebase/aut
 import { getFirestore } from 'firebase/firestore';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-// TODO: Replace with your Firebase project config
+// Firebase project config
 const firebaseConfig = {
   apiKey: "AIzaSyDEWdMmOyRL9HxxOlEZCau08dLSoFkYS6s",
   authDomain: "focusflow-de6ee.firebaseapp.com",
